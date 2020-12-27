@@ -12,7 +12,7 @@ using namespace std;
 int main()
 {
     //type A
-    ifstream fic("PRP_instances/A_050_ABS44_50_5.prp");
+    ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
 
     //type B
     //ifstream fic("../PRP_instances/B_050_instance1.prp");
