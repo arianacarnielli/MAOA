@@ -12,7 +12,7 @@ using namespace std;
 int main()
 {
     //type A
-    ifstream fic("../PRP_instances/A_014_ABS1_15_1.prp");
+    ifstream fic("PRP_instances/A_050_ABS44_50_5.prp");
 
     //type B
     //ifstream fic("../PRP_instances/B_050_instance1.prp");
@@ -28,9 +28,9 @@ int main()
     
     SolApprochee sol = SolApprochee(&I); 
     sol.init_SC();
-    sol.solve_LSP(false);
+    sol.solve_LSP(true);
 
-    sol.solve_VRP_MTZ(1, true);
+    sol.solve_VRP_MTZ(2, true);
 
 
     return 0;

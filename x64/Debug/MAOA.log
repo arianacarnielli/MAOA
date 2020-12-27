@@ -1,43 +1,39 @@
 ﻿  MAOA.cpp
-  PRP.cpp
-  SolApprochee.cpp
-C:\Users\arian\Documents\Faculdade\MAOA\mon git\SolApprochee.cpp(320,22): warning C4267: 'initialisation' : conversion de 'size_t' en 'int', perte possible de données
-  Génération de code en cours...
 concert.lib(iloalg.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloalg.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(iloallocator.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(iloallocator.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
+concert.lib(iloallocator.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloallocator.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(iloanyexpr.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloanyexpr.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(iloconstraint.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloconstraint.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(iloenv.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(iloenv.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(iloexpression.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloexpression.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(iloextractable.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloextractable.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(ilohash.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilohash.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
+concert.lib(ilohash.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilohash.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(iloiterator.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(iloiterator.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(ilomap.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilomap.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilorandom.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilorandom.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(ilosatomi.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilosatomi.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
+concert.lib(ilosatomi.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilosatomi.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(ilosbasic.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilosbasic.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(ilosdisplayi.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilosdisplayi.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(iloserror.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloserror.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
+concert.lib(ilosdisplayi.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilosdisplayi.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
+concert.lib(iloserror.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(iloserror.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(iloset.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloset.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilosmodel.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilosmodel.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
-concert.lib(ilosolution.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilosolution.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
+concert.lib(ilosolution.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilosolution.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(ilossequencei.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilossequencei.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilossol.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilossol.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
-concert.lib(ilosstructi.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilosstructi.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
+concert.lib(ilosstructi.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilosstructi.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilostimei.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilostimei.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilothread.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilothread.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
-concert.lib(ilotypes.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilotypes.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
+concert.lib(ilotypes.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilotypes.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilocollection.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilocollection.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(ilocollectioniterator.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilocollectioniterator.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
+concert.lib(ilocollectioniterator.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilocollectioniterator.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilocollectionoperator.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilocollectionoperator.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(ilocollectionstruct.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilocollectionstruct.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(ilosimplecollection.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilosimplecollection.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(ilointervalsi.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilointervalsi.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
+concert.lib(ilointervalsi.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(ilointervalsi.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(ilonumfunci.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(ilonumfunci.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
-concert.lib(iloparami.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloparami.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
+concert.lib(iloparami.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(iloparami.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(iloskiplist.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(iloskiplist.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(evalexpand.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(evalexpand.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
 concert.lib(evalkernel.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(evalkernel.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
-concert.lib(evaluator.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(evaluator.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
+concert.lib(evaluator.obj) : warning LNK4099: PDB '' n'a pu être trouvé avec 'concert.lib(evaluator.obj)' ou sur '' ; l'objet sera lié sans informations de débogage
 concert.lib(strtod.obj) : warning LNK4099: PDB 'concert.pdb' n'a pu être trouvé avec 'concert.lib(strtod.obj)' ou sur 'C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\concert.pdb' ; l'objet sera lié sans informations de débogage
   MAOA.vcxproj -> C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\MAOA.exe
