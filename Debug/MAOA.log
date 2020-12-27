@@ -1,5 +1,0 @@
-﻿  MAOA.cpp
-  PRP.cpp
-  SolApprochee.cpp
-  Génération de code en cours...
-concert.lib(iloexpression.obj) : fatal error LNK1112: type d'ordinateur module 'x64' en conflit avec le type d'ordinateur cible 'x86'
