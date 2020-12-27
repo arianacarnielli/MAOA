@@ -1,0 +1,4 @@
+C:\Users\arian\Documents\Faculdade\MAOA\mon code\x64\Debug\MAOA.exe
+C:\Users\arian\Documents\Faculdade\MAOA\mon code\x64\Debug\MAOA.pdb
+C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\MAOA.exe
+C:\Users\arian\Documents\Faculdade\MAOA\mon git\x64\Debug\MAOA.pdb
