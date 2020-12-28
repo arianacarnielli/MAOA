@@ -18,7 +18,6 @@ SolApprochee::SolApprochee(PRP* inst) : meilleure(inst->n, inst->l), courante(in
 	for (int i = 1; i <= n; i++) {
 		SC[i].resize(l);
 	}
-
 }
 
 void SolApprochee::init_SC() {
@@ -33,6 +32,7 @@ void SolApprochee::init_SC() {
 void SolApprochee::solve_LSP(bool verbose) {
 	int n = instance->n;
 	int l = instance->l;
+
 	vector<double> M;
 	vector<vector<double>> tildeM;
 	M.resize(l);
@@ -439,52 +439,6 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 
 	IloCplex cplex(model);
 
-	/*
-	IloNumVarArray vars(env);
-	IloNumArray vals(env);
-	for (int i = 0; i <= n; i++) {
-		for (int j = 0; j <= n; j++) {
-			if (i != j) {
-				x[i][j].setLB((i == 0 && j == 1) || (i == 1 && j == 4) || (i == 4 && j == 8) || (i == 8 && j == 0));
-				x[i][j].setUB((i == 0 && j == 1) || (i == 1 && j == 4) || (i == 4 && j == 8) || (i == 8 && j == 0));
-				//vars.add(x[i][j]);
-				//vals.add((i == 0 && j == 1) || (i == 1 && j == 4) || (i == 4 && j == 8) || (i == 8 && j == 0));
-			}
-		}
-	}
-	for (int i = 1; i <= n; i++) {
-		//vars.add(w[i]);
-		switch (i) {
-		case 1:
-			w[i].setLB(60);
-			w[i].setUB(60);
-			//vals.add(60);
-			break;
-		case 4:
-			w[i].setLB(40);
-			w[i].setUB(40);
-			//vals.add(40);
-			break;
-		case 8:
-			w[i].setLB(26);
-			w[i].setUB(26);
-			//vals.add(26);
-			break;
-		default:
-			w[i].setLB(0);
-			w[i].setUB(0);
-			//vals.add(0);
-			break;
-		}
-	}
-	//cplex.addMIPStart(vars, vals);
-
-	//cout << cplex.isMIP() << endl;
-
-	//cout << CC[0] << endl;
-
-	cout << CC << endl;
-	*/
 	if (!verbose) {
 		cplex.setOut(env.getNullStream());
 	}
@@ -502,8 +456,10 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 	}
 
 	if (verbose) {
-		for (int i = 1; i <= n; i++) {
-			cout << "w_" << N[i] << ": " << cplex.getValue(w[i]) << endl;
+		if (n > 1) { // Quand n == 1, la variable w[1] n'apparaît sur aucune contrainte ni sur la fonction objectif, dont elle n'est pas calculée
+			for (int i = 1; i <= n; i++) {
+				cout << "w_" << N[i] << ": " << cplex.getValue(w[i]) << endl;
+			}
 		}
 
 		for (int i = 0; i <= n; i++) {
@@ -591,7 +547,7 @@ void SolApprochee::calcul_SC(int t, bool verbose) {
 	}
 }
 
-void SolApprochee::main_loop(int max_iter, bool verbose) {
+void SolApprochee::solve(int max_iter, bool verbose) {
 	init_SC();
 	for (int i = 0; i < max_iter; i++) {
 		solve_LSP(verbose);

@@ -22,7 +22,7 @@ public:
 	void solve_LSP(bool verbose = false);
 	void solve_VRP_MTZ(int t, bool verbose = false);
 	void calcul_SC(int t, bool verbose = false);
-	void main_loop(int max_iter, bool verbose = false);
+	void solve(int max_iter, bool verbose = false);
 };
 
 #endif

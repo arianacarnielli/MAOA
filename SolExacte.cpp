@@ -4,46 +4,29 @@
 
 #include "SolExacte.h"
 #include "PRP.h"
+#include "Solution.h"
 
 typedef IloArray<IloNumVarArray> NumVarMatrix;
 
 ILOSTLBEGIN
 
-SolExacte::SolExacte(PRP* inst) {
+SolExacte::SolExacte(PRP* inst): solution(inst->n, inst->l) {
 	instance = inst;
 	int n = instance->n;
 	int l = instance->l;
 
-	p_sol.resize(l);
-	y_sol.resize(l);
-	I_sol.resize(n + 1);
-	q_sol.resize(n + 1);
-	z_sol.resize(n + 1);
 	w_sol.resize(n + 1);
 
-	I_sol[0].resize(l);
-	z_sol[0].resize(l);
 	for (int i = 1; i <= n; i++) {
-		I_sol[i].resize(l);
-		q_sol[i].resize(l);
-		z_sol[i].resize(l);
 		w_sol[i].resize(l);
 	}
-
-	x_sol.resize(n + 1);
-	for (int i = 0; i <= n; i++) {
-		x_sol[i].resize(n + 1);
-		for (int j = 0; j <= n; j++) {
-			x_sol[i][j].resize(l);
-		}
-	}
 }
-
 
 void SolExacte::solve(bool verbose) {
 	
 	int n = instance->n;
 	int l = instance->l;
+
 	vector<double> M;
 	vector<vector<double>> tildeM;
 	M.resize(l);
@@ -149,7 +132,7 @@ void SolExacte::solve(bool verbose) {
 			varname << "z_" << i << "_" << t;
 			z[i][t].setName(varname.str().c_str());
 
-			w[i][t] = IloNumVar(env, 0.0, instance -> Q, ILOINT);
+			w[i][t] = IloNumVar(env, 0.0, instance -> Q, ILOFLOAT);
 			varname.str("");
 			varname << "w_" << i << "_" << t;
 			w[i][t].setName(varname.str().c_str());
@@ -159,14 +142,15 @@ void SolExacte::solve(bool verbose) {
 	for (int i = 0; i <= n; i++) {
 		for (int j = 0; j <= n; j++) {
 			for (int t = 0; t < l; t++) {
-				x[i][j][t] = IloNumVar(env, 0.0, 1.0, ILOINT);
-				varname.str("");
-				varname << "x_" << i << "_" << j << "_" << t;
-				x[i][j][t].setName(varname.str().c_str());
+				if (i != j) { // pas necessaire d'avoir des variables pour la diagonale
+					x[i][j][t] = IloNumVar(env, 0.0, 1.0, ILOINT);
+					varname.str("");
+					varname << "x_" << i << "_" << j << "_" << t;
+					x[i][j][t].setName(varname.str().c_str());
+				}
 			}
 		}
 	}
-
 
 	//////////////
 	//////  CONTRAINTES
@@ -174,13 +158,13 @@ void SolExacte::solve(bool verbose) {
 
 	IloRangeArray CC(env);
 	int nbcst = 0;
-	ostringstream cstname;
 
+	ostringstream cstname;
 
 	//même code que les contraintes du LSP pour les 6 premières contraintes, c'est dans un if pour pouvoir le rétrécir et ne pas se perdre dans le code
 	if (true) {
 		//Contrainte 1 : I0,t-1 + pt = sum{i}(qi,t) + I0,t
-	// il faut traiter le cas t = 0 separement
+		// il faut traiter le cas t = 0 separement
 		IloExpr cst(env);
 		for (int i = 1; i <= n; i++) {
 			cst += q[i][0];
@@ -299,7 +283,9 @@ void SolExacte::solve(bool verbose) {
 			for (int t = 0; t < l; t++) {
 				IloExpr cst(env);
 				for (int j = 0; j <= n; j++) {
-					cst += x[i][j][t];
+					if (i != j) {
+						cst += x[i][j][t];
+					}
 				}
 
 				cst -= z[i][t];
@@ -316,7 +302,9 @@ void SolExacte::solve(bool verbose) {
 			for (int t = 0; t < l; t++) {
 				IloExpr cst(env);
 				for (int j = 0; j <= n; j++) {
-					cst += x[i][j][t] + x[j][i][t];
+					if (i != j) {
+						cst += x[i][j][t] + x[j][i][t];
+					}
 				}
 
 				cst -= 2 * z[i][t];
@@ -380,8 +368,7 @@ void SolExacte::solve(bool verbose) {
 			obj.setLinearCoef(I[i][t], instance->h[i]);
 			for (int j = 0; j <= n; j++) {
 				if (j != i) {
-					int cos = instance->cost(i, j);
-					obj.setLinearCoef(x[i][j][t], cos);
+					obj.setLinearCoef(x[i][j][t], instance->cost(i, j));
 				}
 			}
 		}
@@ -398,17 +385,24 @@ void SolExacte::solve(bool verbose) {
 	cplex.solve(); //ça merde là et jsp pourquoi
 
 	for (int t = 0; t < l; t++) {
-		p_sol[t] = cplex.getValue(p[t]);
-		y_sol[t] = cplex.getValue(y[t]);
-		I_sol[0][t] = cplex.getValue(I[0][t]);
-		z_sol[0][t] = cplex.getValue(z[0][t]);
+		solution.p[t] = cplex.getValue(p[t]);
+		solution.y[t] = cplex.getValue(y[t]);
+		solution.I[0][t] = cplex.getValue(I[0][t]);
+		solution.z[0][t] = cplex.getValue(z[0][t]);
 		for (int i = 1; i <= n; i++) {
-			I_sol[i][t] = cplex.getValue(I[i][t]);
-			q_sol[i][t] = cplex.getValue(q[i][t]);
-			z_sol[i][t] = cplex.getValue(z[i][t]);
+			solution.I[i][t] = cplex.getValue(I[i][t]);
+			solution.q[i][t] = cplex.getValue(q[i][t]);
+			solution.z[i][t] = cplex.getValue(z[i][t]);
 			w_sol[i][t] = cplex.getValue(w[i][t]);
 		}
-
+		for (int i = 0; i <= n; i++) {
+			for (int j = 0; j <= n; j++) {
+				if (i != j && cplex.getValue(x[i][j][t])) {
+					solution.x[t][i].push_back(j);
+				}
+			}
+		}
+		/*
 		//j'aurai pu factoriser mais je préfère privilégier la clarté
 		for(int i = 0; i <= n; i++){
 			for (int j = 0; j <= n; j++) {
@@ -420,27 +414,43 @@ void SolExacte::solve(bool verbose) {
 				}
 			}
 		}
+		*/
 	}
+
+	solution.calcul_valeur(*instance);
 
 	if (verbose) {
 		for (int t = 0; t < l; t++) {
-			cout << "p_" << t << ": " << p_sol[t] << endl;
-			cout << "y_" << t << ": " << y_sol[t] << endl;
-			cout << "I_0_" << t << ": " << I_sol[0][t] << endl;
-			cout << "z_0_" << t << ": " << z_sol[0][t] << endl;
+			cout << "p_" << t << ": " << solution.p[t] << endl;
+			cout << "y_" << t << ": " << solution.y[t] << endl;
+			cout << "I_0_" << t << ": " << solution.I[0][t] << endl;
+			cout << "z_0_" << t << ": " << solution.z[0][t] << endl;
 			for (int i = 1; i <= n; i++) {
-				cout << "I_" << i << "_" << t << ": " << I_sol[i][t] << endl;
-				cout << "q_" << i << "_" << t << ": " << q_sol[i][t] << endl;
-				cout << "z_" << i << "_" << t << ": " << z_sol[i][t] << endl;
+				cout << "I_" << i << "_" << t << ": " << solution.I[i][t] << endl;
+				cout << "q_" << i << "_" << t << ": " << solution.q[i][t] << endl;
+				cout << "z_" << i << "_" << t << ": " << solution.z[i][t] << endl;
 				cout << "w_" << i << "_" << t << ": " << w_sol[i][t] << endl;
 			}
-
+			
+			/*
 			for (int i = 0; i <= n; i++) {
 				for (int j = 0; j <= n; j++) {
-					cout << "x_" << i << "_" << j << "_" << t << ": " << x_sol[i][j][t] << endl;
+					cout << "x_" << i << "_" << j << "_" << t << ": " << cplex.getValue(x[i][j][t]) << endl;
 				}
+			}
+			*/
+
+			cout << "tournee a l'instant t : " << t << endl;
+			for (int i = 0; i <= n; i++) {
+				cout << "Successeurs de " << i << " : ";
+				for (int k = 0; k < solution.x[t][i].size(); k++) {
+					cout << solution.x[t][i][k] << " ";
+				}
+				cout << endl;
 			}
 			cout << endl;
 		}
+		cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
+		cout << "valeur de la solution : " << solution.valeur << endl;
 	}
 }

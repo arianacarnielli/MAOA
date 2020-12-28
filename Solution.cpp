@@ -22,6 +22,7 @@ Solution::Solution(int nn, int ll) {
 	}
 
 	I[0].resize(l);
+	z[0].resize(l);
 	for (int i = 1; i <= n; i++) {
 		I[i].resize(l);
 		q[i].resize(l);

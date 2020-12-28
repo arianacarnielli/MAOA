@@ -15,8 +15,11 @@ using namespace std;
 
 int main()
 {
+    //instance de test (type A)
+    ifstream fic("PRP_instances/Instance_0.prp");
+
     //type A
-    ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
+    //ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
 
     //type B
     //ifstream fic("../PRP_instances/B_050_instance1.prp");
@@ -36,14 +39,19 @@ int main()
     //cout << I.cost(0, 1) <<  endl;
     
     SolApprochee sol_app = SolApprochee(&I);
-    /*sol_app.init_SC();
+    /*
+    sol_app.init_SC();
     sol_app.solve_LSP(false);
     sol_app.solve_VRP_MTZ(0, true);
-    sol_app.calcul_SC(0, true);*/
-    sol_app.main_loop(3, true);
-		
-	/*SolExacte sol_ex = SolExacte(&I);
-	sol_ex.solve(true);*/
+    sol_app.calcul_SC(0, true);
+	*/
+    sol_app.solve(10, true);
+
+	SolExacte sol_ex = SolExacte(&I);
+	sol_ex.solve(true);
+
+    cout << "approchee : " << sol_app.meilleure.valeur << endl;
+    cout << "exacte : " << sol_ex.solution.valeur << endl;
 
     return 0;
 
