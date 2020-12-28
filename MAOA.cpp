@@ -6,6 +6,7 @@
 
 #include "PRP.h"
 #include "SolApprochee.h"
+#include "SolExacte.h"
 
 using namespace std;
 
@@ -26,11 +27,19 @@ int main()
     //cout << I.xy[1].first << " " << I.xy[1].second << endl;
     //cout << I.cost(0, 1) <<  endl;
     
+	/*
     SolApprochee sol = SolApprochee(&I); 
     sol.init_SC();
     sol.solve_LSP(true);
 
     sol.solve_VRP_MTZ(2, true);
+	*/
+	
+
+	
+	SolExacte sol = SolExacte(&I);
+	sol.solve(true);
+	
 
 
     return 0;
