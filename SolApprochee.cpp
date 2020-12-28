@@ -9,32 +9,16 @@ typedef IloArray<IloNumVarArray> NumVarMatrix;
 
 ILOSTLBEGIN
 
-SolApprochee::SolApprochee(PRP* inst) {
+SolApprochee::SolApprochee(PRP* inst) : meilleure(inst->n, inst->l), courante(inst->n, inst->l) {
 	instance = inst;
 	int n = instance->n;
 	int l = instance->l;
 
 	SC.resize(n + 1);
-
-	p_sol.resize(l);
-	y_sol.resize(l);
-	I_sol.resize(n + 1);
-	q_sol.resize(n + 1);
-	z_sol.resize(n + 1);
-
-	x_sol.resize(l);
-	for (int t = 0; t < l; t++) {
-		x_sol[t].resize(n + 1);
-	}
-
-	I_sol[0].resize(l);
 	for (int i = 1; i <= n; i++) {
 		SC[i].resize(l);
-
-		I_sol[i].resize(l);
-		q_sol[i].resize(l);
-		z_sol[i].resize(l);
 	}
+
 }
 
 void SolApprochee::init_SC() {
@@ -288,25 +272,25 @@ void SolApprochee::solve_LSP(bool verbose) {
 	cplex.solve();
 
 	for (int t = 0; t < l; t++) {
-		p_sol[t] = cplex.getValue(p[t]);
-		y_sol[t] = cplex.getValue(y[t]);
-		I_sol[0][t] = cplex.getValue(I[0][t]);
+		courante.p[t] = cplex.getValue(p[t]);
+		courante.y[t] = cplex.getValue(y[t]);
+		courante.I[0][t] = cplex.getValue(I[0][t]);
 		for (int i = 1; i <= n; i++) {
-			I_sol[i][t] = cplex.getValue(I[i][t]);
-			q_sol[i][t] = cplex.getValue(q[i][t]);
-			z_sol[i][t] = cplex.getValue(z[i][t]);
+			courante.I[i][t] = cplex.getValue(I[i][t]);
+			courante.q[i][t] = cplex.getValue(q[i][t]);
+			courante.z[i][t] = cplex.getValue(z[i][t]);
 		}
 	}
 
 	if (verbose) {
 		for (int t = 0; t < l; t++) {
-			cout << "p_" << t << ": " << p_sol[t] << endl;
-			cout << "y_" << t << ": " << y_sol[t] << endl;
-			cout << "I_0_" << t << ": " << I_sol[0][t] << endl;
+			cout << "p_" << t << ": " << courante.p[t] << endl;
+			cout << "y_" << t << ": " << courante.y[t] << endl;
+			cout << "I_0_" << t << ": " << courante.I[0][t] << endl;
 			for (int i = 1; i <= n; i++) {
-				cout << "I_" << i << "_" << t << ": " << I_sol[i][t] << endl;
-				cout << "q_" << i << "_" << t << ": " << q_sol[i][t] << endl;
-				cout << "z_" << i << "_" << t << ": " << z_sol[i][t] << endl;
+				cout << "I_" << i << "_" << t << ": " << courante.I[i][t] << endl;
+				cout << "q_" << i << "_" << t << ": " << courante.q[i][t] << endl;
+				cout << "z_" << i << "_" << t << ": " << courante.z[i][t] << endl;
 			}
 			cout << endl;
 		}
@@ -318,7 +302,7 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 	vector<int> N;
 	N.push_back(0);
 	for (int i = 1; i <= instance->n; i++) {
-		if (z_sol[i][t]) {
+		if (courante.z[i][t]) {
 			N.push_back(i);
 		}
 	}
@@ -423,7 +407,7 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 		for (int j = 1; j <= n; j++) {
 			if (i != j) {
 				IloExpr c10(env);
-				c10 += w[i] - w[j] - (instance->Q + q_sol[N[i]][t]) * x[i][j];
+				c10 += w[i] - w[j] - (instance->Q + courante.q[N[i]][t]) * x[i][j];
 				CC.add(c10 >= -instance->Q);
 				cstname.str("");
 				cstname << "Cst_11col_" << N[i] << "_line_" << N[j];
@@ -507,12 +491,12 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 	cplex.solve();
 
 	for (int i = 0; i <= instance->n; i++) {
-		x_sol[t][i].clear();
+		courante.x[t][i].clear();
 	}
 	for (int i = 0; i <= n; i++) {
 		for (int j = 0; j <= n; j++) {
 			if (i != j && cplex.getValue(x[i][j])) {
-				x_sol[t][N[i]].push_back(N[j]);
+				courante.x[t][N[i]].push_back(N[j]);
 			}
 		}
 	}
@@ -524,8 +508,8 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 
 		for (int i = 0; i <= n; i++) {
 			cout << "Successeurs de " << N[i] << ": ";
-			for (int k = 0; k < x_sol[t][N[i]].size(); k++) {
-				cout << x_sol[t][N[i]][k] << " ";
+			for (int k = 0; k < courante.x[t][N[i]].size(); k++) {
+				cout << courante.x[t][N[i]][k] << " ";
 			}
 			cout << endl;
 		}
@@ -533,7 +517,7 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 }
 
 void SolApprochee::calcul_SC(int t, bool verbose) {
-	Graph g = x_sol[t]; // récupération du graphe
+	Graph g = courante.x[t]; // récupération du graphe
 	int n = g.size() - 1;
 	
 	// Si 0 n'a pas de successeurs, il n'y a aucune tournée à cet instant t
@@ -589,7 +573,7 @@ void SolApprochee::calcul_SC(int t, bool verbose) {
 	// Affichage des résultats si verbose
 	if (verbose) {
 		for (int i = 1; i <= instance->n; i++) {
-			cout << "SC[" << i << "][1] = " << SC[i][1] << endl;
+			cout << "SC[" << i << "][" << t << "] = " << SC[i][t] << endl;
 		}
 
 		cout << "tableau des distances" << endl;
@@ -614,6 +598,14 @@ void SolApprochee::main_loop(int max_iter, bool verbose) {
 		for (int t = 0; t < instance->l; t++) {
 			solve_VRP_MTZ(t, verbose);
 			calcul_SC(t, verbose);
+		}
+		courante.calcul_valeur(*instance);
+		if (courante.valeur < meilleure.valeur) {
+			meilleure = courante;
+		}
+		if (verbose) {
+			cout << "Valeur de la solution courante = " << courante.valeur << endl;
+			cout << "Valeur de la meilleure solution trouvee = " << meilleure.valeur << endl << endl;
 		}
 	}
 }

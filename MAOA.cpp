@@ -35,15 +35,15 @@ int main()
     //cout << I.xy[1].first << " " << I.xy[1].second << endl;
     //cout << I.cost(0, 1) <<  endl;
     
-    SolApprochee sol_app = SolApprochee(&I); 
+    SolApprochee sol_app = SolApprochee(&I);
     /*sol_app.init_SC();
     sol_app.solve_LSP(false);
     sol_app.solve_VRP_MTZ(0, true);
     sol_app.calcul_SC(0, true);*/
-    sol_app.main_loop(10, false);
+    sol_app.main_loop(3, true);
 		
-	SolExacte sol_ex = SolExacte(&I);
-	sol_ex.solve(true);
+	/*SolExacte sol_ex = SolExacte(&I);
+	sol_ex.solve(true);*/
 
     return 0;
 

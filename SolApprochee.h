@@ -1,28 +1,20 @@
 #include<vector>
 
 #include "PRP.h"
+#include "Solution.h"
 
 #ifndef SOL_APPROCHEE_
 #define SOL_APPROCHEE_
-
-typedef vector<vector<int>> Graph; // Graphe représenté par liste de successeurs
 
 using namespace std;
 
 class SolApprochee {
 public:
-	PRP* instance;
+	PRP* instance; // instance du problème
+
+	Solution meilleure, courante; // solutions : meilleure trouvée jusqu'à une étape et courante
+
 	vector<vector<double>> SC; // cout heuristique de la visite du client i à l'instant t
-
-	// Valeurs des variables de décision du problème LSP à la fin
-	vector<double> p_sol; // quantité produite à chaque instant (vecteur de temps)
-	vector<bool> y_sol; // booléan indiquant si la production a été lancé à chaque instant (vecteur de temps)
-	vector<vector<double>> I_sol; // état du stock : dépend de l'indice du client / fournisseur et du temps
-	vector<vector<double>> q_sol; // quantité envoyé à chaque client : dépend de l'indice du client et du temps
-	vector<vector<bool>> z_sol; // booléan indiquant si un envoi est fait au client i à l'instant t
-
-	// Valeurs des variables de décision du problème VRP
-	vector<Graph> x_sol; // graphes avec les tournées de véhicules (vecteur de temps)
 
 	SolApprochee(PRP*);
 
