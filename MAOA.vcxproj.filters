@@ -26,6 +26,9 @@
     </ClCompile>
     <ClCompile Include="Solution.cpp">
       <Filter>Fichiers sources</Filter>
+	</ClCompile>
+    <ClCompile Include="SolExacte.cpp">
+      <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -36,6 +39,9 @@
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="Solution.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="SolExacte.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>
