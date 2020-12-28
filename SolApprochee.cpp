@@ -22,6 +22,11 @@ SolApprochee::SolApprochee(PRP* inst) {
 	q_sol.resize(n + 1);
 	z_sol.resize(n + 1);
 
+	x_sol.resize(l);
+	for (int t = 0; t < l; t++) {
+		x_sol[t].resize(n + 1);
+	}
+
 	I_sol[0].resize(l);
 	for (int i = 1; i <= n; i++) {
 		SC[i].resize(l);
@@ -501,17 +506,114 @@ void SolApprochee::solve_VRP_MTZ(int t, bool verbose) {
 	}
 	cplex.solve();
 
+	for (int i = 0; i <= instance->n; i++) {
+		x_sol[t][i].clear();
+	}
+	for (int i = 0; i <= n; i++) {
+		for (int j = 0; j <= n; j++) {
+			if (i != j && cplex.getValue(x[i][j])) {
+				x_sol[t][N[i]].push_back(N[j]);
+			}
+		}
+	}
+
 	if (verbose) {
 		for (int i = 1; i <= n; i++) {
 			cout << "w_" << N[i] << ": " << cplex.getValue(w[i]) << endl;
 		}
 
 		for (int i = 0; i <= n; i++) {
-			for (int j = 0; j <= n; j++) {
-				if (i != j) {
-					cout << "x_" << N[i] << "_" << N[j] << ": " << cplex.getValue(x[i][j]) << endl;
-				}
+			cout << "Successeurs de " << N[i] << ": ";
+			for (int k = 0; k < x_sol[t][N[i]].size(); k++) {
+				cout << x_sol[t][N[i]][k] << " ";
 			}
+			cout << endl;
+		}
+	}
+}
+
+void SolApprochee::calcul_SC(int t, bool verbose) {
+	Graph g = x_sol[t]; // récupération du graphe
+	int n = g.size() - 1;
+	
+	// Si 0 n'a pas de successeurs, il n'y a aucune tournée à cet instant t
+    // Dans ce cas, le coût de l'insertion est le coût d'aller-retour depuis 0.
+	if (g[0].empty()) {
+		for (int i = 1; i <= n; i++) {
+			SC[i][t] = 2 * instance->cost(0, i);
+		}
+
+	}
+	else {
+
+		vector<int> non_visites; // contient les noeuds non visités par aucune tournée
+		for (int i = 0; i <= n; i++) {
+			if (g[i].empty()) {
+				non_visites.push_back(i);
+				SC[i][t] = 2 * instance->cost(0, i); // initialisation avec le cout de l'aller-retour direct
+			}
+		}
+
+		int nb_tournees = g[0].size();
+		for (int i = 0; i < nb_tournees; i++) { // parcours de chaque tournée
+			int pred = 0;
+			int cour = g[0][i];
+			int succ;
+			double cost_pred_cour;
+			while (cour != 0) {
+				// dans chaque sommet de chaque tournée, il faut faire deux choses :
+				// 1. recalculer son cout
+				// 2. passer par les sommets non-visités et voir si le cout de l'inserer dans cette tournée est plus petit
+				//    que le meilleur cout d'insertion connu.
+				succ = g[cour][0];
+				cost_pred_cour = instance->cost(pred, cour);
+				SC[cour][t] = max(0.0, cost_pred_cour + instance->cost(cour, succ) - instance->cost(pred, succ));
+
+				for (int j = 0; j < non_visites.size(); j++) {
+					double cost_insertion = max(0.0, instance->cost(pred, non_visites[j]) + instance->cost(non_visites[j], cour) - cost_pred_cour);
+					SC[non_visites[j]][t] = min(SC[non_visites[j]][t], cost_insertion);
+				}
+
+				pred = cour;
+				cour = succ;
+			}
+			// Il faut aussi tester le coût de l'insertion de chaque sommet non-visité entre le dernier sommet de la tournée (pred) et 0 (cour)
+			cost_pred_cour = instance->cost(pred, cour);
+			for (int j = 0; j < non_visites.size(); j++) {
+				double cost_insertion = max(0.0, instance->cost(pred, non_visites[j]) + instance->cost(non_visites[j], cour) - cost_pred_cour);
+				SC[non_visites[j]][t] = min(SC[non_visites[j]][t], cost_insertion);
+			}
+		}
+	}
+
+	// Affichage des résultats si verbose
+	if (verbose) {
+		for (int i = 1; i <= instance->n; i++) {
+			cout << "SC[" << i << "][1] = " << SC[i][1] << endl;
+		}
+
+		cout << "tableau des distances" << endl;
+
+		cout << "   | ";
+		for (int i = 0; i <= instance->n; i++) printf("%4d | ", i);
+		cout << endl;
+		for (int i = 0; i <= instance->n; i++) {
+			printf("%2d | ", i);
+			for (int j = 0; j <= instance->n; j++) {
+				printf("%4.0f | ", instance->cost(i, j));
+			}
+			cout << endl;
+		}
+	}
+}
+
+void SolApprochee::main_loop(int max_iter, bool verbose) {
+	init_SC();
+	for (int i = 0; i < max_iter; i++) {
+		solve_LSP(verbose);
+		for (int t = 0; t < instance->l; t++) {
+			solve_VRP_MTZ(t, verbose);
+			calcul_SC(t, verbose);
 		}
 	}
 }

@@ -4,6 +4,9 @@
 #include <iostream>
 #include <fstream>
 
+
+#include <cstdio> // à effacer après, c'est juste pour printf
+
 #include "PRP.h"
 #include "SolApprochee.h"
 
@@ -17,6 +20,11 @@ int main()
     //type B
     //ifstream fic("../PRP_instances/B_050_instance1.prp");
 
+    if (!fic.is_open()) {
+        cerr << "impossible d'ouvrir le fichier";
+        return 1;
+    }
+
     PRP I(fic);
 
     //I.write_screen_txt();
@@ -27,11 +35,13 @@ int main()
     //cout << I.cost(0, 1) <<  endl;
     
     SolApprochee sol = SolApprochee(&I); 
-    sol.init_SC();
-    sol.solve_LSP(true);
+    /*sol.init_SC();
+    sol.solve_LSP(false);
 
-    sol.solve_VRP_MTZ(2, true);
+    sol.solve_VRP_MTZ(0, true);
+    sol.calcul_SC(0, true);*/
 
+    sol.main_loop(10, false);
 
     return 0;
 

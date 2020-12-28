@@ -39,7 +39,6 @@ class PRP{
   void write_screen_txt();
   void write_instance_file(string);
   double cost(int i, int j);
-
 };
 
 #endif
