@@ -18,7 +18,7 @@ public:
 
 	SolExacte(PRP*);
 
-	void solve(bool verbose = false);
+	void solve(Solution* sol_init = nullptr, bool verbose = false);
 };
 
 #endif

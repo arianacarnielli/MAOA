@@ -6,7 +6,7 @@
 #include "PRP.h"
 #include "Solution.h"
 
-typedef IloArray<IloNumVarArray> NumVarMatrix;
+//typedef IloArray<IloNumVarArray> NumVarMatrix;
 
 ILOSTLBEGIN
 
@@ -22,7 +22,7 @@ SolExacte::SolExacte(PRP* inst): solution(inst->n, inst->l) {
 	}
 }
 
-void SolExacte::solve(bool verbose) {
+void SolExacte::solve(Solution* sol_init, bool verbose) {
 	
 	int n = instance->n;
 	int l = instance->l;
@@ -317,14 +317,15 @@ void SolExacte::solve(bool verbose) {
 		}
 		
 		//l'usine n'est pas pris en compte dedans (remarque je suis ce qu'il y a dans le papier)
+		// il y a une erreur dans la contrainte du papier, on fait une version corrigée ici.
 		//contrainte 11
 		for (int i = 1; i <= n; i++) {
 			for (int j = 1; j <= n; j++) {
 				for (int t = 0; t < l; t++) {
 					if (i != j) {
 						IloExpr cst(env);
-						cst += w[i][t] - w[j][t] - q[i][t] - tildeM[i][t] * x[i][j][t];
-						CC.add(cst >= -tildeM[i][t]);
+						cst += w[i][t] - w[j][t] - q[i][t] - (instance->Q + tildeM[i][t]) * x[i][j][t];
+						CC.add(cst >= -instance->Q - tildeM[i][t]);
 						cstname.str("");
 						cstname << "Cst_11col_" << i << "_line_" << j << "_case_" << t;
 						CC[nbcst].setName(cstname.str().c_str());
@@ -382,6 +383,67 @@ void SolExacte::solve(bool verbose) {
 	if (!verbose) {
 		cplex.setOut(env.getNullStream());
 	}
+
+	if (sol_init){
+
+		IloNumVarArray vars(env);
+		IloNumArray vals(env);
+
+		for (int t = 0; t < l; t++) {
+			vars.add(p[t]);
+			vals.add(sol_init->p[t]);
+			//p[t].setBounds(sol_init->p[t], sol_init->p[t]);
+
+			vars.add(y[t]);
+			vals.add(sol_init->y[t]);
+			//y[t].setBounds(sol_init->y[t], sol_init->y[t]);
+
+			vars.add(I[0][t]);
+			vals.add(sol_init->I[0][t]);
+			//I[0][t].setBounds(sol_init->I[0][t], sol_init->I[0][t]);
+
+			for (int i = 1; i <= n; i++) {
+				vars.add(I[i][t]);
+				vals.add(sol_init->I[i][t]);
+				//I[i][t].setBounds(sol_init->I[i][t], sol_init->I[i][t]);
+
+				vars.add(q[i][t]);
+				vals.add(sol_init->q[i][t]);
+				//q[i][t].setBounds(sol_init->q[i][t], sol_init->q[i][t]);
+
+				vars.add(z[i][t]);
+				vals.add(sol_init->z[i][t]);
+				//z[i][t].setBounds(sol_init->z[i][t], sol_init->z[i][t]);
+
+			}
+
+			vector<vector<bool>> x_tab;
+			x_tab.resize(n + 1);
+			for (int i = 0; i <= n; i++) {
+				x_tab[i].resize(n + 1);
+				for (int j = 0; j <= n; j++) {
+					x_tab[i][j] = false;
+				}
+			}
+			for (int i = 0; i <= n; i++) {
+				for (int j = 0; j < sol_init->x[t][i].size(); j++) {
+					x_tab[i][sol_init->x[t][i][j]] = true;
+				}
+			}
+			for (int i = 0; i <= n; i++) {
+				for (int j = 0; j <= n; j++) {
+					if (i != j) {
+						vars.add(x[i][j][t]);
+						vals.add(x_tab[i][j]);
+						//x[i][j][t].setBounds(x_tab[i][j], x_tab[i][j]);
+					}
+				}
+			}
+		}
+
+		cplex.addMIPStart(vars, vals);
+	}
+
 	cplex.solve(); //ça merde là et jsp pourquoi
 
 	for (int t = 0; t < l; t++) {

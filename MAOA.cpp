@@ -16,10 +16,10 @@ using namespace std;
 int main()
 {
     //instance de test (type A)
-    ifstream fic("PRP_instances/Instance_0.prp");
+    //ifstream fic("PRP_instances/Instance_0.prp");
 
     //type A
-    //ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
+    ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
 
     //type B
     //ifstream fic("../PRP_instances/B_050_instance1.prp");
@@ -45,13 +45,13 @@ int main()
     sol_app.solve_VRP_MTZ(0, true);
     sol_app.calcul_SC(0, true);
 	*/
-    sol_app.solve(10, true);
+    sol_app.solve(1, false);
 
-	SolExacte sol_ex = SolExacte(&I);
-	sol_ex.solve(true);
+	//SolExacte sol_ex = SolExacte(&I);
+	//sol_ex.solve(&(sol_app.meilleure), true);
 
     cout << "approchee : " << sol_app.meilleure.valeur << endl;
-    cout << "exacte : " << sol_ex.solution.valeur << endl;
+    //cout << "exacte : " << sol_ex.solution.valeur << endl;
 
     return 0;
 
