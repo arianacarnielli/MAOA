@@ -148,14 +148,16 @@
     <ClCompile Include="MAOA.cpp" />
     <ClCompile Include="PRP.cpp" />
     <ClCompile Include="SolApprochee.cpp" />
+    <ClCompile Include="SolExacteCoupe.cpp" />
     <ClCompile Include="Solution.cpp" />
-    <ClCompile Include="SolExacte.cpp" />
+    <ClCompile Include="SolExacteBase.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SolApprochee.h" />
     <ClInclude Include="PRP.h" />
+    <ClInclude Include="SolExacteCoupe.h" />
     <ClInclude Include="Solution.h" />
-    <ClInclude Include="SolExacte.h" />
+    <ClInclude Include="SolExacteBase.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

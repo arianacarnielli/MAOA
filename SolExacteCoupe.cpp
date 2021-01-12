@@ -1,8 +1,10 @@
 #include <vector>
+#include <random>
+#include <unordered_set>
 #include <ilcplex/ilocplex.h>
 #include <algorithm>
 
-#include "SolExacte.h"
+#include "SolExacteCoupe.h"
 #include "PRP.h"
 #include "Solution.h"
 
@@ -10,7 +12,54 @@
 
 ILOSTLBEGIN
 
-SolExacte::SolExacte(PRP* inst): solution(inst->n, inst->l) {
+default_random_engine alea;
+
+ILOUSERCUTCALLBACK4(CoupeFractionalCapacity, PRP*, instance, vector<vector<vector<IloNumVar>>>, x, vector<vector<IloNumVar>>, q, IloNum, eps) {
+	int n = instance->n;
+	int l = instance->l;
+	
+	uniform_int_distribution<int> size(1, (n+1)/2);
+	uniform_int_distribution<int> element(1, n);
+	unordered_set<int> NC, S, Sbar;
+
+	for (int i = 1; i <= n; i++) {
+		NC.insert(i);
+	}
+
+	int r_size = size(alea);
+	for (int i = 0; i < r_size; i++) {
+		S.insert(element(alea));
+	}
+	for (int i = 1; i <= n; i++) {
+		if (!S.count(i)) {
+			Sbar.insert(i);
+		}
+	}
+
+	for (int t = 0; t < l; t++) {
+		double value = 0;
+		for (int i : S) {
+			for (int j : Sbar) {
+				value += getValue(x[i][j][t]);
+			}
+			value -= getValue(q[i][t]) / (instance->Q);
+		}
+		if (value < -eps) {
+			IloExpr cst(getEnv());
+			for (int i : S) {
+				for (int j : Sbar) {
+					cst += x[i][j][t];
+				}
+				cst -= q[i][t] / (instance -> Q);
+			}
+			add(cst >= 0).end();
+			return;
+		}
+	}
+}
+
+
+SolExacteCoupe::SolExacteCoupe(PRP* inst): solution(inst->n, inst->l) {
 	instance = inst;
 	int n = instance->n;
 	int l = instance->l;
@@ -22,7 +71,7 @@ SolExacte::SolExacte(PRP* inst): solution(inst->n, inst->l) {
 	}
 }
 
-void SolExacte::solve(Solution* sol_init, bool verbose) {
+void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 	
 	int n = instance->n;
 	int l = instance->l;
@@ -383,7 +432,12 @@ void SolExacte::solve(Solution* sol_init, bool verbose) {
 	if (!verbose) {
 		cplex.setOut(env.getNullStream());
 	}
+	// Définition de la tolérance
+	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, tolerance);
+	// Coupe
+	cplex.use(CoupeFractionalCapacity(env, instance, x, q, cplex.getParam(IloCplex::EpRHS)));
 
+	// Si une solution iniale a été passée en argument, on la charge
 	if (sol_init){
 
 		IloNumVarArray vars(env);
@@ -441,11 +495,13 @@ void SolExacte::solve(Solution* sol_init, bool verbose) {
 			}
 		}
 
+		// Chargement de la condition initiale passee en argument
 		cplex.addMIPStart(vars, vals);
 	}
 
-	cplex.solve(); //ça merde là et jsp pourquoi
+	cplex.solve();
 
+	// Récupération des valeurs retrouvées dans solution
 	for (int t = 0; t < l; t++) {
 		solution.p[t] = cplex.getValue(p[t]);
 		solution.y[t] = cplex.getValue(y[t]);
@@ -464,23 +520,13 @@ void SolExacte::solve(Solution* sol_init, bool verbose) {
 				}
 			}
 		}
-		/*
-		//j'aurai pu factoriser mais je préfère privilégier la clarté
-		for(int i = 0; i <= n; i++){
-			for (int j = 0; j <= n; j++) {
-				if (i = j) {
-					x_sol[i][j][t] = 0;
-				}
-				else {
-					x_sol[i][j][t] = cplex.getValue(x[i][j][t]);
-				}
-			}
-		}
-		*/
 	}
 
+	// Calcul de la valeur de la solution par l'algorithme calcul_valeur
+	// Doit donner la même chose que cplex.getObjValue()
 	solution.calcul_valeur(*instance);
 
+	// Affichages
 	if (verbose) {
 		for (int t = 0; t < l; t++) {
 			cout << "p_" << t << ": " << solution.p[t] << endl;
@@ -493,14 +539,6 @@ void SolExacte::solve(Solution* sol_init, bool verbose) {
 				cout << "z_" << i << "_" << t << ": " << solution.z[i][t] << endl;
 				cout << "w_" << i << "_" << t << ": " << w_sol[i][t] << endl;
 			}
-			
-			/*
-			for (int i = 0; i <= n; i++) {
-				for (int j = 0; j <= n; j++) {
-					cout << "x_" << i << "_" << j << "_" << t << ": " << cplex.getValue(x[i][j][t]) << endl;
-				}
-			}
-			*/
 
 			cout << "tournee a l'instant t : " << t << endl;
 			for (int i = 0; i <= n; i++) {

@@ -26,8 +26,11 @@
     </ClCompile>
     <ClCompile Include="Solution.cpp">
       <Filter>Fichiers sources</Filter>
-	</ClCompile>
-    <ClCompile Include="SolExacte.cpp">
+    </ClCompile>
+    <ClCompile Include="SolExacteBase.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="SolExacteCoupe.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,7 +44,10 @@
     <ClInclude Include="Solution.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="SolExacte.h">
+    <ClInclude Include="SolExacteBase.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="SolExacteCoupe.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>
