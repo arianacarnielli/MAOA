@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include <ilcplex/ilocplex.h>
 #include <algorithm>
+#include <ctime>
 
 #include "SolExacteCoupe.h"
 #include "PRP.h"
@@ -12,48 +13,95 @@
 
 ILOSTLBEGIN
 
-default_random_engine alea;
+default_random_engine alea(time(0));
 
+// Coupe pour les contraintes de capacité fractionnaire
 ILOUSERCUTCALLBACK4(CoupeFractionalCapacity, PRP*, instance, vector<vector<vector<IloNumVar>>>, x, vector<vector<IloNumVar>>, q, IloNum, eps) {
 	int n = instance->n;
 	int l = instance->l;
 	
 	uniform_int_distribution<int> size(1, (n+1)/2);
 	uniform_int_distribution<int> element(1, n);
-	unordered_set<int> NC, S, Sbar;
-
-	for (int i = 1; i <= n; i++) {
-		NC.insert(i);
-	}
-
-	int r_size = size(alea);
-	for (int i = 0; i < r_size; i++) {
-		S.insert(element(alea));
-	}
-	for (int i = 1; i <= n; i++) {
-		if (!S.count(i)) {
-			Sbar.insert(i);
-		}
-	}
 
 	for (int t = 0; t < l; t++) {
+		// S est un ensemble aléatoire de taille aléatoire aussi
+		// S ne contient jamais l'usine
+		// Sbar = {0, 1, ..., n} \ S
+		unordered_set<int> S, Sbar;
+		unordered_set<int> best_S, best_Sbar;
+		int r_size = size(alea);
+		for (int i = 0; i < r_size; i++) {
+			S.insert(element(alea));
+		}
+		for (int i = 0; i <= n; i++) {
+			if (!S.count(i)) {
+				Sbar.insert(i);
+			}
+		}
+
+		// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
 		double value = 0;
+		double best_value;
 		for (int i : S) {
 			for (int j : Sbar) {
 				value += getValue(x[i][j][t]);
 			}
 			value -= getValue(q[i][t]) / (instance->Q);
 		}
-		if (value < -eps) {
-			IloExpr cst(getEnv());
+		best_value = value;
+		best_S = S;
+		best_Sbar = Sbar;
+
+		// Arrêt lorsque Sbar = {0}, S = {1, ..., n}
+		while (Sbar.size() > 1) {
+			// Choix du sommet v à ajouter à S
+			// Celui qui maximise Somme_{i in S} x[i][v][t]
+			// Heuristique de Augerat et al., EJOR, 1997
+			double xv_max = -1;
+			int v_max = 0;
+			for (int v : Sbar) {
+				if (v != 0) {
+					double xv_value = 0;
+					for (int i : S) {
+						xv_value += getValue(x[i][v][t]);
+					}
+					if (xv_value > xv_max) {
+						xv_max = xv_value;
+						v_max = v;
+					}
+				}
+			}
+
+			S.insert(v_max);
+			Sbar.erase(v_max);
+
+			// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
+			value = 0;
 			for (int i : S) {
 				for (int j : Sbar) {
+					value += getValue(x[i][j][t]);
+				}
+				value -= getValue(q[i][t]) / (instance->Q);
+			}
+			// On garde la meilleure déjà trouvée
+			if (value < best_value) {
+				best_value = value;
+				best_S = S;
+				best_Sbar = Sbar;
+			}
+		}
+
+		// Si négatif : contrainte violée
+		// On ajoute la contrainte au PLNE
+		if (best_value < -eps) {
+			IloExpr cst(getEnv());
+			for (int i : best_S) {
+				for (int j : best_Sbar) {
 					cst += x[i][j][t];
 				}
 				cst -= q[i][t] / (instance -> Q);
 			}
 			add(cst >= 0).end();
-			return;
 		}
 	}
 }
@@ -515,7 +563,7 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 		}
 		for (int i = 0; i <= n; i++) {
 			for (int j = 0; j <= n; j++) {
-				if (i != j && cplex.getValue(x[i][j][t])) {
+				if (i != j && cplex.getValue(x[i][j][t]) > 0.5) {
 					solution.x[t][i].push_back(j);
 				}
 			}
@@ -549,6 +597,16 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 				cout << endl;
 			}
 			cout << endl;
+			
+			/*for (int i = 0; i <= n; i++) {
+				cout << "i = " << i << ": ";
+				for (int j = 0; j <= n; j++) {
+					if (i != j) {
+						cout << cplex.getValue(x[i][j][t]) << " ";
+					}
+				}
+				cout << endl;
+			}*/
 		}
 		cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
 		cout << "valeur de la solution : " << solution.valeur << endl;
