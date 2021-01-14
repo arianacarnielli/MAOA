@@ -4,6 +4,7 @@
 #include <ilcplex/ilocplex.h>
 #include <algorithm>
 #include <ctime>
+#include <map>
 
 #include "SolExacteCoupe.h"
 #include "PRP.h"
@@ -13,81 +14,134 @@
 
 ILOSTLBEGIN
 
+//default_random_engine alea(0); // alea avec seed fixée pour des tests
 default_random_engine alea(time(0));
 
+class CoupesI : public IloCplex::UserCutCallbackI {
+	PRP* instance;
+	vector<vector<vector<IloNumVar>>> x;
+	vector<vector<IloNumVar>> q;
+	vector<vector<IloNumVar>> z;
+	IloNum eps;
+	int repeat;
+public:
+	CoupesI(IloEnv env, PRP* instance1, vector<vector<vector<IloNumVar>>> x1,
+		vector<vector<IloNumVar>> q1, vector<vector<IloNumVar>> z1, IloNum eps1, int repeat1) :
+		IloCplex::UserCutCallbackI(env),
+		instance(instance1),
+		x(x1),
+		q(q1),
+		z(z1),
+		eps(eps1),
+		repeat(repeat1) {}
+
+	IloCplex::CallbackI* duplicateCallback() const ILO_OVERRIDE {
+		return (new (getEnv()) CoupesI(*this));
+	}
+
+	double valeurCapaciteFractionnaire(int t, unordered_set<int>&, unordered_set<int>&);
+	double valeurEliminationCycleFractionnaireGeneralise(int, unordered_set<int>&);
+	void coupeGloutonCapaciteFractionnaire(int n, int l);
+	void coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l);
+	void coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, double u_lim, double l_lim, double per);
+
+	void main() ILO_OVERRIDE;
+};
+
+IloCplex::Callback Coupes(IloEnv env, PRP* instance1, vector<vector<vector<IloNumVar>>> x1,
+	vector<vector<IloNumVar>> q1, vector<vector<IloNumVar>> z1, IloNum eps1, int repeat1) {
+	return (IloCplex::Callback(new (env) CoupesI(env, instance1, x1, q1, z1, eps1, repeat1)));
+}
+
+double CoupesI::valeurCapaciteFractionnaire(int t, unordered_set<int>& S, unordered_set<int>& Sbar) {
+	double value = 0;
+	for (int i : S) {
+		for (int j : Sbar) {
+			value += getValue(x[i][j][t]);
+		}
+		value -= getValue(q[i][t]) / (instance->Q);
+	}
+	return value;
+}
+
+double CoupesI::valeurEliminationCycleFractionnaireGeneralise(int t, unordered_set<int>& S) {
+	double value = 0;
+	for (int i : S) {
+		value += (instance->Q) * getValue(z[i][t]);
+		value -= getValue(q[i][t]);
+		for (int j : S) {
+			if (i != j) {
+				value -= (instance->Q) * getValue(x[i][j][t]);
+			}
+		}
+	}
+	return value;
+}
+
 // Coupe pour les contraintes de capacité fractionnaire
-ILOUSERCUTCALLBACK4(CoupeFractionalCapacity, PRP*, instance, vector<vector<vector<IloNumVar>>>, x, vector<vector<IloNumVar>>, q, IloNum, eps) {
-	int n = instance->n;
-	int l = instance->l;
-	
-	uniform_int_distribution<int> size(1, (n+1)/2);
+void CoupesI::coupeGloutonCapaciteFractionnaire(int n, int l) {
+	uniform_int_distribution<int> size(1, (n + 1) / 2);
 	uniform_int_distribution<int> element(1, n);
 
 	for (int t = 0; t < l; t++) {
-		// S est un ensemble aléatoire de taille aléatoire aussi
-		// S ne contient jamais l'usine
-		// Sbar = {0, 1, ..., n} \ S
-		unordered_set<int> S, Sbar;
 		unordered_set<int> best_S, best_Sbar;
-		int r_size = size(alea);
-		for (int i = 0; i < r_size; i++) {
-			S.insert(element(alea));
-		}
-		for (int i = 0; i <= n; i++) {
-			if (!S.count(i)) {
-				Sbar.insert(i);
-			}
-		}
+		double best_value = 0;
 
-		// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
-		double value = 0;
-		double best_value;
-		for (int i : S) {
-			for (int j : Sbar) {
-				value += getValue(x[i][j][t]);
+		for (int counter = 0; counter < repeat; counter++) {
+			// S est un ensemble aléatoire de taille aléatoire aussi
+			// S ne contient jamais l'usine
+			// Sbar = {0, 1, ..., n} \ S
+			unordered_set<int> S, Sbar;
+			int r_size = size(alea);
+			for (int i = 0; i < r_size; i++) {
+				S.insert(element(alea));
 			}
-			value -= getValue(q[i][t]) / (instance->Q);
-		}
-		best_value = value;
-		best_S = S;
-		best_Sbar = Sbar;
-
-		// Arrêt lorsque Sbar = {0}, S = {1, ..., n}
-		while (Sbar.size() > 1) {
-			// Choix du sommet v à ajouter à S
-			// Celui qui maximise Somme_{i in S} x[i][v][t]
-			// Heuristique de Augerat et al., EJOR, 1997
-			double xv_max = -1;
-			int v_max = 0;
-			for (int v : Sbar) {
-				if (v != 0) {
-					double xv_value = 0;
-					for (int i : S) {
-						xv_value += getValue(x[i][v][t]);
-					}
-					if (xv_value > xv_max) {
-						xv_max = xv_value;
-						v_max = v;
-					}
+			for (int i = 0; i <= n; i++) {
+				if (!S.count(i)) {
+					Sbar.insert(i);
 				}
 			}
-
-			S.insert(v_max);
-			Sbar.erase(v_max);
 
 			// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
-			value = 0;
-			for (int i : S) {
-				for (int j : Sbar) {
-					value += getValue(x[i][j][t]);
-				}
-				value -= getValue(q[i][t]) / (instance->Q);
-			}
-			// On garde la meilleure déjà trouvée
+			double value = valeurCapaciteFractionnaire(t, S, Sbar);
 			if (value < best_value) {
 				best_value = value;
 				best_S = S;
 				best_Sbar = Sbar;
+			}
+
+			// Arrêt lorsque Sbar = {0}, S = {1, ..., n}
+			while (Sbar.size() > 1) {
+				// Choix du sommet v à ajouter à S
+				// Celui qui maximise Somme_{i in S} x[i][v][t]
+				// Heuristique de Augerat et al., EJOR, 1997
+				double xv_max = -1;
+				int v_max = 0;
+				for (int v : Sbar) {
+					if (v != 0) {
+						double xv_value = 0;
+						for (int i : S) {
+							xv_value += getValue(x[i][v][t]);
+						}
+						if (xv_value > xv_max) {
+							xv_max = xv_value;
+							v_max = v;
+						}
+					}
+				}
+
+				S.insert(v_max);
+				Sbar.erase(v_max);
+
+				// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
+				value = valeurCapaciteFractionnaire(t, S, Sbar);
+
+				// On garde la meilleure déjà trouvée
+				if (value < best_value) {
+					best_value = value;
+					best_S = S;
+					best_Sbar = Sbar;
+				}
 			}
 		}
 
@@ -99,11 +153,174 @@ ILOUSERCUTCALLBACK4(CoupeFractionalCapacity, PRP*, instance, vector<vector<vecto
 				for (int j : best_Sbar) {
 					cst += x[i][j][t];
 				}
-				cst -= q[i][t] / (instance -> Q);
+				cst -= q[i][t] / (instance->Q);
 			}
 			add(cst >= 0).end();
 		}
 	}
+}
+
+// Coupe pour les contraintes d'élimination de cycle fractionnaires généralisées
+void CoupesI::coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l) {
+	// Ça ne marche que pour n >= 3
+	uniform_int_distribution<int> size(2, (n + 1) / 2);
+	uniform_int_distribution<int> element(1, n);
+
+	for (int t = 0; t < l; t++) {
+		unordered_set<int> best_S;
+		double best_value = 0;
+
+		for (int counter = 0; counter < repeat; counter++) {
+			// S est un ensemble aléatoire de taille aléatoire aussi
+			// S ne contient jamais l'usine
+			unordered_set<int> S;
+			int r_size = size(alea);
+			for (int i = 0; i < r_size; i++) {
+				S.insert(element(alea));
+			}
+
+			// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
+			double value = valeurEliminationCycleFractionnaireGeneralise(t, S);
+			if (value < best_value) {
+				best_value = value;
+				best_S = S;
+			}
+
+			// Arrêt lorsque S = {1, ..., n}
+			while (S.size() < n) {
+				// Choix du sommet v à ajouter à S
+				// Celui qui maximise Somme_{i in S} x[i][v][t]
+				// Heuristique de Augerat et al., EJOR, 1997
+				double xv_max = -1;
+				int v_max = 0;
+				for (int v = 1; v <= n; v++) {
+					if (!S.count(v)) {
+						double xv_value = 0;
+						for (int i : S) {
+							xv_value += getValue(x[i][v][t]);
+						}
+						if (xv_value > xv_max) {
+							xv_max = xv_value;
+							v_max = v;
+						}
+					}
+				}
+
+				S.insert(v_max);
+
+				// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
+				value = valeurEliminationCycleFractionnaireGeneralise(t, S);
+
+				// On garde la meilleure déjà trouvée
+				if (value < best_value) {
+					best_value = value;
+					best_S = S;
+				}
+			}
+		}
+
+		// Si négatif : contrainte violée
+		// On ajoute la contrainte au PLNE
+		if (best_value < -eps) {
+			IloExpr cst(getEnv());
+			for (int i : best_S) {
+				cst += (instance->Q) * z[i][t];
+				cst -= q[i][t];
+				for (int j : best_S) {
+					if (i != j) {
+						cst -= (instance->Q) * x[i][j][t];
+					}
+				}
+			}
+			add(cst >= 0).end();
+		}
+	}
+}
+
+void CoupesI::coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, double u_lim, double l_lim, double per) {
+	for (int t = 0; t < l; t++) { // Boucle dans les pas de temps ; on fait un tabu search pour chaque
+		// Ensemble des clients à visiter en cette tournée
+		unordered_set<int> NC;
+		for (int i = 1; i <= n; i++) {
+			if (getValue(q[i][t]) > eps) {
+				NC.insert(i);
+			}
+		}
+
+		// Déterminer la quantité de camions nécessaire
+		double sum_q = 0;
+		for (int i = 1; i <= n; i++) {
+			sum_q += getValue(q[i][t]);
+		}
+		int K = min((int)(sum_q / (instance->Q)) + 1, instance->m);
+
+		for (int i0 : NC) { // Boucle dans le point de l'ensemble S au début
+			unordered_set<int> S = {i0};
+			double q_S = getValue(q[i0][t]);
+
+			for (int p = 1; p < K; p++) {
+				////////////////////
+				// Phase d'expansion
+				////////////////////
+				while (true) {
+					// Calcul de s_max et C_plus
+					double s_max = (p + u_lim) * (instance->Q) - q_S;
+					unordered_set<int> C_plus;
+					for (int i : NC) {
+						if (!S.count(i) && getValue(q[i][t]) <= s_max) {
+							C_plus.insert(i);
+						}
+					}
+
+					if (C_plus.size() == 0) {
+						break;
+					}
+					multimap<double, int> dict_xv; // dictionnaire avec les paires (x(S:v), v)
+					for (int v : C_plus) {
+						double xv = 0;
+						for (int i : S) {
+							xv += getValue(x[i][v][t]);
+						}
+						dict_xv.insert(pair<double, int>(xv, v));
+					}
+					vector<int> candidate_v;
+					auto it = dict_xv.rbegin();
+					double M = it->first;
+					for (; it != dict_xv.rend() && it->first >= M - per; ++it) {
+						candidate_v.push_back(it->second);
+					}
+					uniform_int_distribution<int> v_to_insert(0, candidate_v.size() - 1);
+					int v_insert = candidate_v[v_to_insert(alea)];
+					S.insert(v_insert);
+					q_S += getValue(q[v_insert][t]);
+					// check (2.4) : c'est la partie qu'il reste à faire ici !!
+					// ajouter (2.4) si fausse
+				}
+				////////////////////
+				// Phase d'échange
+				////////////////////
+
+				// TODO
+			}
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+// Appel de toutes les coupes
+void CoupesI::main() {
+	int n = instance->n;
+	int l = instance->l;
+
+	coupeGloutonCapaciteFractionnaire(n, l);
+	coupeGloutonEliminationCycleFractionnaireGeneralise(n, l);
 }
 
 
@@ -483,7 +700,7 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 	// Définition de la tolérance
 	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, tolerance);
 	// Coupe
-	cplex.use(CoupeFractionalCapacity(env, instance, x, q, cplex.getParam(IloCplex::EpRHS)));
+	cplex.use(Coupes(env, instance, x, q, z, cplex.getParam(IloCplex::EpRHS), 1));
 
 	// Si une solution iniale a été passée en argument, on la charge
 	if (sol_init){
