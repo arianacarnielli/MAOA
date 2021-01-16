@@ -20,7 +20,7 @@ int main()
     //ifstream fic("PRP_instances/Instance_0.prp");
 
     //type A
-    ifstream fic("PRP_instances/A_014_ABS1_15_2.prp");
+    ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
 
     //type B
     //ifstream fic("../PRP_instances/B_050_instance1.prp");
@@ -45,12 +45,12 @@ int main()
     //SolExacteBase sol_ex_base = SolExacteBase(&I);
     //sol_ex_base.solve(&(sol_app.meilleure), 0.02, true);
     
-    SolExacteCoupe sol_ex_coupe = SolExacteCoupe(&I);
-	sol_ex_coupe.solve(&(sol_app.meilleure), 1e-4, true);
+    //SolExacteCoupe sol_ex_coupe = SolExacteCoupe(&I);
+	//sol_ex_coupe.solve(&(sol_app.meilleure), 1e-4, true);
 
-    //cout << "approchee : " << sol_app.meilleure.valeur << endl;
+    cout << "approchee : " << sol_app.meilleure.valeur << endl;
     //cout << "exacte base : " << sol_ex_base.solution.valeur << endl;
-    cout << "exacte coupe : " << sol_ex_coupe.solution.valeur << endl;
+    //cout << "exacte coupe : " << sol_ex_coupe.solution.valeur << endl;
 
     return 0;
 

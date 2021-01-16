@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <ctime>
 #include <map>
+#include <limits>
 
 #include "SolExacteCoupe.h"
 #include "PRP.h"
@@ -39,12 +40,13 @@ public:
 		return (new (getEnv()) CoupesI(*this));
 	}
 
-	double valeurCapaciteFractionnaire(int t, unordered_set<int>&, unordered_set<int>&);
-	double valeurEliminationCycleFractionnaireGeneralise(int, unordered_set<int>&);
-	void coupeGloutonCapaciteFractionnaire(int n, int l);
-	void coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l);
-	void coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, double u_lim, double l_lim, double per);
-
+	double valeurCapaciteFractionnaire(int t, unordered_set<int>& S, unordered_set<int>& Sbar);
+	double valeurEliminationCycleFractionnaireGeneralise(int t, unordered_set<int>& S);
+	void addEliminationCycleFractionnaireGeneralise(int t, unordered_set<int>& S);
+	int coupeGloutonCapaciteFractionnaire(int n, int l);
+	int coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l);
+	int coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, double u_lim, double l_lim, double per, int tope, int tll);
+	int coupeTabuSimpleEliminationCycleFractionnaireGeneralise(int n, int l, int max_cpt, int tabu);
 	void main() ILO_OVERRIDE;
 };
 
@@ -78,8 +80,25 @@ double CoupesI::valeurEliminationCycleFractionnaireGeneralise(int t, unordered_s
 	return value;
 }
 
+// Ajout d'une contrainte d'élimination de cycle fractionnaire generalisée
+void CoupesI::addEliminationCycleFractionnaireGeneralise(int t, unordered_set<int>& S) {
+	IloExpr cst(getEnv());
+	for (int i : S) {
+		cst += (instance->Q) * z[i][t];
+		cst -= q[i][t];
+		for (int j : S) {
+			if (i != j) {
+				cst -= (instance->Q) * x[i][j][t];
+			}
+		}
+	}
+	add(cst >= 0).end();
+}
+
 // Coupe pour les contraintes de capacité fractionnaire
-void CoupesI::coupeGloutonCapaciteFractionnaire(int n, int l) {
+int CoupesI::coupeGloutonCapaciteFractionnaire(int n, int l) {
+	int cpt_constraints = 0;
+	
 	uniform_int_distribution<int> size(1, (n + 1) / 2);
 	uniform_int_distribution<int> element(1, n);
 
@@ -156,12 +175,17 @@ void CoupesI::coupeGloutonCapaciteFractionnaire(int n, int l) {
 				cst -= q[i][t] / (instance->Q);
 			}
 			add(cst >= 0).end();
+			cpt_constraints++;
 		}
 	}
+
+	return cpt_constraints;
 }
 
 // Coupe pour les contraintes d'élimination de cycle fractionnaires généralisées
-void CoupesI::coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l) {
+int CoupesI::coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l) {
+	int cpt_constraints = 0;
+
 	// Ça ne marche que pour n >= 3
 	uniform_int_distribution<int> size(2, (n + 1) / 2);
 	uniform_int_distribution<int> element(1, n);
@@ -222,29 +246,127 @@ void CoupesI::coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l) 
 		// Si négatif : contrainte violée
 		// On ajoute la contrainte au PLNE
 		if (best_value < -eps) {
-			IloExpr cst(getEnv());
-			for (int i : best_S) {
-				cst += (instance->Q) * z[i][t];
-				cst -= q[i][t];
-				for (int j : best_S) {
-					if (i != j) {
-						cst -= (instance->Q) * x[i][j][t];
+			addEliminationCycleFractionnaireGeneralise(t, best_S);
+			cpt_constraints++;
+		}
+	}
+
+	return cpt_constraints;
+}
+
+int CoupesI::coupeTabuSimpleEliminationCycleFractionnaireGeneralise(int n, int l, int max_cpt, int tabu) {
+	int cpt_constraints = 0;
+
+	uniform_int_distribution<int> size(1, (n + 1) / 2);
+	uniform_int_distribution<int> element(1, n);
+
+	for (int t = 0; t < l; t++) {
+		// Initialisation du tableau tabu
+		vector<int> tabu_list;
+		tabu_list.resize(n + 1);
+		for (int i = 1; i <= n; i++) {
+			tabu_list[i] = 0;
+		}
+
+		// Initialisation d'un ensemble aléatoire S
+		unordered_set<int> S, best_S;
+		double value, best_value;
+		int r_size = size(alea);
+		for (int i = 0; i < r_size; i++) {
+			S.insert(element(alea));
+		}
+		value = valeurEliminationCycleFractionnaireGeneralise(t, S);
+		
+		// Meilleur S déjà trouvé
+		best_S = S;
+		best_value = value;
+
+		for (int cpt_pas_amelioration = 0; cpt_pas_amelioration < max_cpt; cpt_pas_amelioration++) {
+			// Parcours du voisinage pour chercher le meilleur voisin
+			double best_value_iter = numeric_limits<double>::infinity();
+			int best_v_iter;
+			double temp;
+			for (int i = 1; i <= n; i++) {
+				if (tabu_list[i] <= 0) { // On considère un sommet uniquement s'il n'est pas tabu
+					if (!S.count(i)) { // Si le sommet n'est pas dans S, on voit ce qui se passe si on l'y ajoutait
+						S.insert(i);
+						temp = valeurEliminationCycleFractionnaireGeneralise(t, S);
+						if (temp < best_value_iter) {
+							best_value_iter = temp;
+							best_v_iter = i;
+						}
+						S.erase(i);
+					} else if (S.size() > 1) { // Si le sommet est dans S et S contient au moins 2 sommets, on voit ce qui se passe si on l'en supprimait
+						S.erase(i);
+						temp = valeurEliminationCycleFractionnaireGeneralise(t, S);
+						if (temp < best_value_iter) {
+							best_value_iter = temp;
+							best_v_iter = i;
+						}
+						S.insert(i);
 					}
 				}
 			}
-			add(cst >= 0).end();
+
+			// Si tous les sommets sont tabu, on doit s'arrêter !
+			if (best_value_iter == numeric_limits<double>::infinity()) {
+				break;
+			}
+
+			// On regarde si le meilleur sommet est dans S ou pas pour savoir s'il faut l'ajouter ou le supprimer
+			if (S.count(best_v_iter)) {
+				S.erase(best_v_iter);
+			} else {
+				S.insert(best_v_iter);
+			}
+			value = best_value_iter;
+			tabu_list[best_v_iter] = tabu; // Le sommet devient tabu
+
+			// Si on a amélioré, on garde la solution et on redemarre le compteur
+			if (value < best_value) {
+				best_value = value;
+				best_S = S;
+				cpt_pas_amelioration = 0;
+			}
+
+			// Mise à jour de la liste tabu
+			for (int i = 1; i <= n; i++) {
+				tabu_list[i] -= 1;
+			}
+		}
+
+		// Si négatif : contrainte violée
+		// On ajoute la contrainte au PLNE
+		if (best_value < -eps) {
+			addEliminationCycleFractionnaireGeneralise(t, best_S);
+			cpt_constraints++;
 		}
 	}
+
+	return cpt_constraints;
 }
 
-void CoupesI::coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, double u_lim, double l_lim, double per) {
+int CoupesI::coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, double u_lim, double l_lim, double per, int tope, int tll) {
+	/*
+	n : nombre de clients
+	l : nombre de pas de temps
+	u_lim : paramètre de la recherche tabu, utilisé dans le calcul de s_max et C_plus
+	l_lim : paramètre de la recherche tabu, utilisé dans le calcul de s_min et C_minus
+	per : paramètre de la recherche tabu ; dans la phase d'expansion, on choisit un élément aléatoire
+	      de valeur entre M - per et M, où M est la valeur maximale
+	tope : nombre d'itérations de la phase d'échange
+	tll : nombre d'itérations pendant lesquelles un mouvement est tabu (doit être <= tope)
+	*/
+	int cpt_constraints = 0;
+
 	for (int t = 0; t < l; t++) { // Boucle dans les pas de temps ; on fait un tabu search pour chaque
+
 		// Ensemble des clients à visiter en cette tournée
 		unordered_set<int> NC;
 		for (int i = 1; i <= n; i++) {
-			if (getValue(q[i][t]) > eps) {
+			//if (getValue(q[i][t]) > eps) {
 				NC.insert(i);
-			}
+			//}
 		}
 
 		// Déterminer la quantité de camions nécessaire
@@ -253,15 +375,18 @@ void CoupesI::coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, dou
 			sum_q += getValue(q[i][t]);
 		}
 		int K = min((int)(sum_q / (instance->Q)) + 1, instance->m);
-
+		
 		for (int i0 : NC) { // Boucle dans le point de l'ensemble S au début
 			unordered_set<int> S = {i0};
 			double q_S = getValue(q[i0][t]);
+			double z_S = getValue(z[i0][t]);
+			double x_S = 0;
 
-			for (int p = 1; p < K; p++) {
+			for (int p = 1; p <= K; p++) {
 				////////////////////
 				// Phase d'expansion
 				////////////////////
+
 				while (true) {
 					// Calcul de s_max et C_plus
 					double s_max = (p + u_lim) * (instance->Q) - q_S;
@@ -283,46 +408,164 @@ void CoupesI::coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, dou
 						}
 						dict_xv.insert(pair<double, int>(xv, v));
 					}
-					vector<int> candidate_v;
+					vector<pair<double, int>> candidate_v; // Vecteur avec les candidats à être insérés
+					// Les candidats sont ceux dont la somme précédente est entre M - per et M
+					// On parcourt donc dict_xv (qui est ordonné par clé) de la fin vers le début
 					auto it = dict_xv.rbegin();
 					double M = it->first;
 					for (; it != dict_xv.rend() && it->first >= M - per; ++it) {
-						candidate_v.push_back(it->second);
+						candidate_v.push_back(*it);
 					}
+					// Choix aléatoire de l'élément à ajouter parmi les candidats
 					uniform_int_distribution<int> v_to_insert(0, candidate_v.size() - 1);
-					int v_insert = candidate_v[v_to_insert(alea)];
-					S.insert(v_insert);
+					int v_insert = candidate_v[v_to_insert(alea)].second;
+					
+					// Mise à jour de S, x_S, q_S et z_S
+					x_S += candidate_v[v_to_insert(alea)].first;
+					for (int j : S) {
+						x_S += getValue(x[v_insert][j][t]);
+					}
 					q_S += getValue(q[v_insert][t]);
-					// check (2.4) : c'est la partie qu'il reste à faire ici !!
-					// ajouter (2.4) si fausse
+					z_S += getValue(z[v_insert][t]);
+					S.insert(v_insert);
+
+					// On vérifie si la contrainte est violée
+					//if ((instance->Q) * z_S - q_S - (instance->Q) * x_S < -eps) {
+					if (valeurEliminationCycleFractionnaireGeneralise(t, S) < -eps) {
+						addEliminationCycleFractionnaireGeneralise(t, S);
+						cpt_constraints++;
+					}
 				}
+
 				////////////////////
 				// Phase d'échange
 				////////////////////
+				// Initialisation de la liste tabu
+				vector<int> tabu_list;
+				tabu_list.resize(n + 1);
+				for (int i = 1; i <= n; i++) {
+					tabu_list[i] = 0;
+				}
 
-				// TODO
+
+				for (int iter = 0; iter < tope; iter++) {
+					// Calcul de s_max, s_min, C_plus, C_minus
+					double s_max = (p + u_lim) * (instance->Q) - q_S;
+					double s_min = (p - l_lim) * (instance->Q) - q_S;
+					unordered_set<int> C_plus, C_minus;
+					for (int i : NC) {
+						if (!S.count(i) && getValue(q[i][t]) <= s_max && tabu_list[i] <= 0) {
+							C_plus.insert(i);
+						}
+					}
+					for (int i : S) {
+						if (getValue(q[i][t]) <= s_min && tabu_list[i] <= 0) {
+							C_minus.insert(i);
+						}
+					}
+
+					// Si C_plus et C_minus sont vides, on arrête cette boucle
+					if (C_plus.size() + C_minus.size() == 0) {
+						break;
+					}
+
+					// Calcul des max
+					double val_plus_max = -1;
+					int j_plus_max = 0;
+					for (int j : C_plus) {
+						double xj = 0;
+						for (int i : S) {
+							xj += getValue(x[i][j][t]);
+						}
+						if (xj > val_plus_max) {
+							val_plus_max = xj;
+							j_plus_max = j;
+						}
+					}
+
+					double val_minus_max = -1;
+					int j_minus_max = 0;
+					for (int j : C_minus) {
+						double xj = 0;
+						for (int i : NC) {
+							if (!S.count(i)) {
+								xj += getValue(x[i][j][t]);
+							}
+						}
+						if (xj > val_minus_max) {
+							val_minus_max = xj;
+							j_minus_max = j;
+						}
+					}
+
+					// On vérifie quel est le plus grand des deux max
+					if (val_plus_max > val_minus_max) {
+						// Cas où on ajoute v
+						
+						// Mise à jour de S, x_S, q_S et z_S
+						x_S += val_plus_max;
+						for (int j : S) {
+							x_S += getValue(x[j_plus_max][j][t]);
+						}
+						q_S += getValue(q[j_plus_max][t]);
+						z_S += getValue(z[j_plus_max][t]);
+						S.insert(j_plus_max);
+
+						// Mise à jour de la liste tabu
+						tabu_list[j_plus_max] = tll;
+					} else {
+						// Cas où on retire v
+
+						// Mise à jour de S, x_S, q_S et z_S
+						S.erase(j_minus_max);
+						for (int i : S) {
+							x_S -= getValue(x[j_minus_max][i][t]);
+							x_S -= getValue(x[i][j_minus_max][t]);
+						}
+						q_S -= getValue(q[j_minus_max][t]);
+						z_S -= getValue(z[j_minus_max][t]);
+
+						// Mise à jour de la liste tabu
+						tabu_list[j_minus_max] = tll;
+					}
+
+					// On vérifie si la contrainte est violée et, si oui, on l'ajoute
+					//if ((instance->Q) * z_S - q_S - (instance->Q) * x_S < -eps) {
+					if (valeurEliminationCycleFractionnaireGeneralise(t, S) < -eps) {
+						addEliminationCycleFractionnaireGeneralise(t, S);
+						cpt_constraints++;
+					}
+
+					// Mise à jour de la liste tabu
+					for (int i = 1; i <= n; i++) {
+						tabu_list[i] -= 1;
+					}
+				}
 			}
 		}
 	}
+
+	return cpt_constraints;
 }
 
-
-
-
-
-
-
-
-
-// Appel de toutes les coupes
+// Appel des coupes
 void CoupesI::main() {
 	int n = instance->n;
 	int l = instance->l;
 
-	coupeGloutonCapaciteFractionnaire(n, l);
-	coupeGloutonEliminationCycleFractionnaireGeneralise(n, l);
-}
+	//coupeGloutonCapaciteFractionnaire(n, l);
 
+	//cout << "Appel a coupeGloutonEliminationCycleFractionnaireGeneralise" << endl;
+	int cpt_constraints = coupeGloutonEliminationCycleFractionnaireGeneralise(n, l);
+	//cout << cpt_constraints << " contraintes ont ete ajoutees" << endl;
+
+	//cout << "Appel a coupeTabuEliminationCycleFractionnaireGeneralise" << endl;
+	//int cpt_constraints = coupeTabuEliminationCycleFractionnaireGeneralise(n, l, 0.3, 0.1, 0, 10, 5);
+	//cout << cpt_constraints << " contraintes ont ete ajoutees" << endl;
+
+	//int cpt_constraints = coupeTabuSimpleEliminationCycleFractionnaireGeneralise(n, l, 15, 3);
+	
+}
 
 SolExacteCoupe::SolExacteCoupe(PRP* inst): solution(inst->n, inst->l) {
 	instance = inst;
