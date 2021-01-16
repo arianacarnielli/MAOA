@@ -1,5 +1,6 @@
 #include <limits>
 #include <iostream>
+#include <cstdio>
 
 #include "PRP.h"
 #include "Solution.h"
@@ -43,4 +44,40 @@ void Solution::calcul_valeur(PRP& inst) {
 			}
 		}
 	}
+}
+
+ostream& operator<<(ostream& os, const Solution& solution) {
+	char buffer[200];
+	os << "Instance avec " << solution.n << " clients et " << solution.l << " pas de temps" << endl;
+
+	for (int t = 0; t < solution.l; t++) {
+		os << "Pas de temps " << t << " :" << endl;
+		os << "  Production : p_" << t << " = " << solution.p[t] << endl;
+		os << "  Production lancee ? y_" << t << " = " << solution.y[t] << endl;
+		os << "  Stock a l'usine : I_0_" << t << " = " << solution.I[0][t] << endl;
+		for (int i = 1; i <= solution.n; i++) {
+			sprintf_s(buffer, 200, "  Client %03d : I_%03d_%02d = %10.3f ; q_%03d_%02d = %10.3f ; z_%03d_%02d = %1d",
+				i, i, t, solution.I[i][t], i, t, solution.q[i][t], i, t, solution.z[i][t]);
+			os << buffer << endl;
+		}
+		os << "  Tournees : ";
+		if (!solution.x[t][0].size()) {
+			os << "aucune" << endl;
+		}
+		else {
+			os << endl;
+			int v;
+			for (int j = 0; j < solution.x[t][0].size(); j++) {
+				os << "  0 --> ";
+				v = solution.x[t][0][j];
+				while (v) {
+					cout << v << " --> ";
+					v = solution.x[t][v][0];
+				}
+				os << "0" << endl;
+			}
+		}
+	}
+	os << "Valeur de la solution : " << solution.valeur << endl;
+	return os;
 }

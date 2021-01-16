@@ -3,7 +3,6 @@
 #include <unordered_set>
 #include <ilcplex/ilocplex.h>
 #include <algorithm>
-#include <ctime>
 #include <map>
 #include <limits>
 
@@ -12,11 +11,9 @@
 #include "Solution.h"
 
 //typedef IloArray<IloNumVarArray> NumVarMatrix;
+extern default_random_engine alea;
 
 ILOSTLBEGIN
-
-//default_random_engine alea(0); // alea avec seed fixée pour des tests
-default_random_engine alea(time(0));
 
 class CoupesI : public IloCplex::UserCutCallbackI {
 	PRP* instance;
@@ -553,10 +550,10 @@ void CoupesI::main() {
 	int n = instance->n;
 	int l = instance->l;
 
-	//coupeGloutonCapaciteFractionnaire(n, l);
+	coupeGloutonCapaciteFractionnaire(n, l);
 
 	//cout << "Appel a coupeGloutonEliminationCycleFractionnaireGeneralise" << endl;
-	int cpt_constraints = coupeGloutonEliminationCycleFractionnaireGeneralise(n, l);
+	//int cpt_constraints = coupeGloutonEliminationCycleFractionnaireGeneralise(n, l);
 	//cout << cpt_constraints << " contraintes ont ete ajoutees" << endl;
 
 	//cout << "Appel a coupeTabuEliminationCycleFractionnaireGeneralise" << endl;
@@ -567,7 +564,8 @@ void CoupesI::main() {
 	
 }
 
-SolExacteCoupe::SolExacteCoupe(PRP* inst): solution(inst->n, inst->l) {
+SolExacteCoupe::SolExacteCoupe(PRP* inst): 
+	solution(inst->n, inst->l) {
 	instance = inst;
 	int n = instance->n;
 	int l = instance->l;
@@ -907,8 +905,6 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 		}
 	}
 
-	//TODO : ajouter les autres contraintes (17 et +)
-
 	model.add(CC);
 
 	//////////////
@@ -939,6 +935,7 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 	IloCplex cplex(model);
 	if (!verbose) {
 		cplex.setOut(env.getNullStream());
+		cplex.setWarning(env.getNullStream());
 	}
 	// Définition de la tolérance
 	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, tolerance);
@@ -1035,40 +1032,40 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 	solution.calcul_valeur(*instance);
 
 	// Affichages
-	if (verbose) {
-		for (int t = 0; t < l; t++) {
-			cout << "p_" << t << ": " << solution.p[t] << endl;
-			cout << "y_" << t << ": " << solution.y[t] << endl;
-			cout << "I_0_" << t << ": " << solution.I[0][t] << endl;
-			cout << "z_0_" << t << ": " << solution.z[0][t] << endl;
-			for (int i = 1; i <= n; i++) {
-				cout << "I_" << i << "_" << t << ": " << solution.I[i][t] << endl;
-				cout << "q_" << i << "_" << t << ": " << solution.q[i][t] << endl;
-				cout << "z_" << i << "_" << t << ": " << solution.z[i][t] << endl;
-				cout << "w_" << i << "_" << t << ": " << w_sol[i][t] << endl;
-			}
+	//if (verbose) {
+	//	for (int t = 0; t < l; t++) {
+	//		cout << "p_" << t << ": " << solution.p[t] << endl;
+	//		cout << "y_" << t << ": " << solution.y[t] << endl;
+	//		cout << "I_0_" << t << ": " << solution.I[0][t] << endl;
+	//		cout << "z_0_" << t << ": " << solution.z[0][t] << endl;
+	//		for (int i = 1; i <= n; i++) {
+	//			cout << "I_" << i << "_" << t << ": " << solution.I[i][t] << endl;
+	//			cout << "q_" << i << "_" << t << ": " << solution.q[i][t] << endl;
+	//			cout << "z_" << i << "_" << t << ": " << solution.z[i][t] << endl;
+	//			cout << "w_" << i << "_" << t << ": " << w_sol[i][t] << endl;
+	//		}
 
-			cout << "tournee a l'instant t : " << t << endl;
-			for (int i = 0; i <= n; i++) {
-				cout << "Successeurs de " << i << " : ";
-				for (int k = 0; k < solution.x[t][i].size(); k++) {
-					cout << solution.x[t][i][k] << " ";
-				}
-				cout << endl;
-			}
-			cout << endl;
-			
-			/*for (int i = 0; i <= n; i++) {
-				cout << "i = " << i << ": ";
-				for (int j = 0; j <= n; j++) {
-					if (i != j) {
-						cout << cplex.getValue(x[i][j][t]) << " ";
-					}
-				}
-				cout << endl;
-			}*/
-		}
-		cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
-		cout << "valeur de la solution : " << solution.valeur << endl;
-	}
+	//		cout << "tournee a l'instant t : " << t << endl;
+	//		for (int i = 0; i <= n; i++) {
+	//			cout << "Successeurs de " << i << " : ";
+	//			for (int k = 0; k < solution.x[t][i].size(); k++) {
+	//				cout << solution.x[t][i][k] << " ";
+	//			}
+	//			cout << endl;
+	//		}
+	//		cout << endl;
+	//		
+	//		/*for (int i = 0; i <= n; i++) {
+	//			cout << "i = " << i << ": ";
+	//			for (int j = 0; j <= n; j++) {
+	//				if (i != j) {
+	//					cout << cplex.getValue(x[i][j][t]) << " ";
+	//				}
+	//			}
+	//			cout << endl;
+	//		}*/
+	//	}
+	//	cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
+	//	cout << "valeur de la solution : " << solution.valeur << endl;
+	//}
 }

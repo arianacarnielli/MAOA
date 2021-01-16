@@ -350,8 +350,6 @@ void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
 		}
 	}
 
-	//TODO : ajouter les autres contraintes (17 et +)
-
 	model.add(CC);
 
 	//////////////
@@ -382,6 +380,7 @@ void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
 	IloCplex cplex(model);
 	if (!verbose) {
 		cplex.setOut(env.getNullStream());
+		cplex.setWarning(env.getNullStream());
 	}
 	// Définition de la tolérance
 	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, tolerance);
@@ -464,7 +463,7 @@ void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
 		}
 		for (int i = 0; i <= n; i++) {
 			for (int j = 0; j <= n; j++) {
-				if (i != j && cplex.getValue(x[i][j][t])) {
+				if (i != j && cplex.getValue(x[i][j][t]) > 0.5) {
 					solution.x[t][i].push_back(j);
 				}
 			}
@@ -476,7 +475,7 @@ void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
 	solution.calcul_valeur(*instance);
 
 	// Affichages
-	if (verbose) {
+	/*if (verbose) {
 		for (int t = 0; t < l; t++) {
 			cout << "p_" << t << ": " << solution.p[t] << endl;
 			cout << "y_" << t << ": " << solution.y[t] << endl;
@@ -501,5 +500,5 @@ void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
 		}
 		cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
 		cout << "valeur de la solution : " << solution.valeur << endl;
-	}
+	}*/
 }

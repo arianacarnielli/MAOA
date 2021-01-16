@@ -3,12 +3,12 @@
 #include "PRP.h"
 #include "Solution.h"
 
-#ifndef SOL_APPROCHEE_
-#define SOL_APPROCHEE_
+#ifndef SOL_APPROCHEE_BASE_
+#define SOL_APPROCHEE_BASE_
 
 using namespace std;
 
-class SolApprochee {
+class SolApprocheeBase {
 public:
 	PRP* instance; // instance du problème
 
@@ -16,7 +16,7 @@ public:
 
 	vector<vector<double>> SC; // cout heuristique de la visite du client i à l'instant t
 
-	SolApprochee(PRP*);
+	SolApprocheeBase(PRP*);
 
 	void init_SC();
 	void solve_LSP(bool verbose = false);

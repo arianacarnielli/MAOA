@@ -24,6 +24,8 @@ public:
 	Solution(int nn, int ll);
 
 	void calcul_valeur(PRP& inst);
+
+	friend ostream& operator<<(ostream& os, const Solution& solution);
 };
 
 #endif

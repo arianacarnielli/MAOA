@@ -147,14 +147,16 @@
   <ItemGroup>
     <ClCompile Include="MAOA.cpp" />
     <ClCompile Include="PRP.cpp" />
-    <ClCompile Include="SolApprochee.cpp" />
+    <ClCompile Include="SolApprocheeBase.cpp" />
+    <ClCompile Include="SolApprocheeCoupe.cpp" />
     <ClCompile Include="SolExacteCoupe.cpp" />
     <ClCompile Include="Solution.cpp" />
     <ClCompile Include="SolExacteBase.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="SolApprochee.h" />
+    <ClInclude Include="SolApprocheeBase.h" />
     <ClInclude Include="PRP.h" />
+    <ClInclude Include="SolApprocheeCoupe.h" />
     <ClInclude Include="SolExacteCoupe.h" />
     <ClInclude Include="Solution.h" />
     <ClInclude Include="SolExacteBase.h" />
