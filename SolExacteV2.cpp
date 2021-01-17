@@ -10,6 +10,167 @@
 
 ILOSTLBEGIN
 
+extern default_random_engine alea;
+
+// Contraintes de coupes pour renforcement de la formulation
+class Coupes2I : public IloCplex::UserCutCallbackI {
+	PRP* instance;
+	vector<vector<vector<vector<IloNumVar>>>> x;
+	vector<vector<vector<IloNumVar>>> q;
+	IloNum eps;
+	int repeat;
+public:
+	Coupes2I(IloEnv env, PRP* instance1, vector<vector<vector<vector<IloNumVar>>>> x1,
+		vector<vector<vector<IloNumVar>>> q1, IloNum eps1, int repeat1) :
+		IloCplex::UserCutCallbackI(env),
+		instance(instance1),
+		x(x1),
+		q(q1),
+		eps(eps1),
+		repeat(repeat1) {}
+
+	IloCplex::CallbackI* duplicateCallback() const ILO_OVERRIDE {
+		return (new (getEnv()) Coupes2I(*this));
+	}
+
+	double valeurCapaciteFractionnaire(int t, int k, unordered_set<int>& S, unordered_set<int>& Sbar);
+	int coupeGloutonCapaciteFractionnaire(int n, int l, int K);
+	void main() ILO_OVERRIDE;
+};
+
+IloCplex::Callback Coupes2(IloEnv env, PRP* instance1, vector<vector<vector<vector<IloNumVar>>>> x1,
+	vector<vector<vector<IloNumVar>>> q1, IloNum eps1, int repeat1) {
+	return (IloCplex::Callback(new (env) Coupes2I(env, instance1, x1, q1, eps1, repeat1)));
+}
+
+double Coupes2I::valeurCapaciteFractionnaire(int t, int k, unordered_set<int>& S, unordered_set<int>& Sbar) {
+	double value = 0;
+	for (int i : S) {
+		for (int j : Sbar) {
+			value += getValue(x[i][j][k][t]);
+		}
+		value -= getValue(q[i][k][t]) / (instance->Q);
+	}
+	return value;
+}
+
+// Coupe pour les contraintes de capacité fractionnaire
+int Coupes2I::coupeGloutonCapaciteFractionnaire(int n, int l, int K) {
+	int cpt_constraints = 0;
+
+	uniform_int_distribution<int> size(1, (n + 1) / 2);
+	uniform_int_distribution<int> element(1, n);
+
+	for (int t = 0; t < l; t++) {
+		unordered_set<int> best_S, best_Sbar;
+		double best_value = 0;
+
+		// Pour éviter trop de calculs, k est choisi de façon aléatoire
+		// Proba d'un k proportionnelle à sum_i q[i][k][t]
+		vector<double> weight_k(K, 0);
+		double sum_weight = 0;
+		for (int k = 0; k < K; k++) {
+			for (int i = 1; i <= n; i++) {
+				weight_k[k] += max(0, (int) getValue(q[i][k][t]));
+			}
+			sum_weight += weight_k[k];
+		}
+		if (sum_weight < eps) {
+			// Pas de contrainte violée à cet instant si il n'y a rien à transporter
+			// On passe au prochain t
+			continue;
+		}
+
+		discrete_distribution<int> random_k(weight_k.begin(), weight_k.end());
+		int k = random_k(alea);
+
+		for (int counter = 0; counter < repeat; counter++) {
+			// S est un ensemble aléatoire de taille aléatoire aussi
+			// S ne contient jamais l'usine
+			// Sbar = {0, 1, ..., n} \ S
+			unordered_set<int> S, Sbar;
+			int r_size = size(alea);
+			for (int i = 0; i < r_size; i++) {
+				S.insert(element(alea));
+			}
+			for (int i = 0; i <= n; i++) {
+				if (!S.count(i)) {
+					Sbar.insert(i);
+				}
+			}
+
+			// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
+			double value = valeurCapaciteFractionnaire(t, k, S, Sbar);
+			if (value < best_value) {
+				best_value = value;
+				best_S = S;
+				best_Sbar = Sbar;
+			}
+
+			// Arrêt lorsque Sbar = {0}, S = {1, ..., n}
+			while (Sbar.size() > 1) {
+				// Choix du sommet v à ajouter à S
+				// Celui qui maximise Somme_{i in S} x[i][v][t]
+				// Heuristique de Augerat et al., EJOR, 1997
+				double xv_max = -1;
+				int v_max = 0;
+				for (int v : Sbar) {
+					if (v != 0) {
+						double xv_value = 0;
+						for (int i : S) {
+							xv_value += getValue(x[i][v][k][t]);
+						}
+						if (xv_value > xv_max) {
+							xv_max = xv_value;
+							v_max = v;
+						}
+					}
+				}
+
+				S.insert(v_max);
+				Sbar.erase(v_max);
+
+				// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
+				value = valeurCapaciteFractionnaire(t, k, S, Sbar);
+
+				// On garde la meilleure déjà trouvée
+				if (value < best_value) {
+					best_value = value;
+					best_S = S;
+					best_Sbar = Sbar;
+				}
+			}
+		}
+		
+		// Si négatif : contrainte violée
+		// On ajoute la contrainte au PLNE
+		if (best_value < -eps) {
+			IloExpr cst(getEnv());
+			for (int i : best_S) {
+				for (int j : best_Sbar) {
+					cst += x[i][j][k][t];
+				}
+				cst -= q[i][k][t] / (instance->Q);
+			}
+			add(cst >= 0).end();
+			cpt_constraints++;
+		}
+	}
+
+	return cpt_constraints;
+}
+
+// Appel des coupes
+void Coupes2I::main() {
+	//cout << "UserCut" << endl;
+	int n = instance->n;
+	int l = instance->l;
+	int K = min(instance->m, instance->n);
+
+	coupeGloutonCapaciteFractionnaire(n, l, K);
+	//cout << coupeGloutonCapaciteFractionnaire(n, l, K) << " contraintes ajoutees" << endl;
+}
+
 // Contrainte 29
 ILOLAZYCONSTRAINTCALLBACK5(BriserCycle, int, n, int, l, int, K, vector<vector<vector<vector<IloNumVar>>>>, x, vector<vector<vector<IloNumVar>>>, z) {
 	for (int t = 0; t < l; t++) {
@@ -440,6 +601,9 @@ void SolExacteV2::solve(Solution* sol_init, double tolerance, bool verbose) {
 
 	//contrainte 29 comme LazyConstraint
 	cplex.use(BriserCycle(env, n, l, K, x, z));
+
+	//UserCuts pour les contraintes de renforcement
+	cplex.use(Coupes2(env, instance, x, q, cplex.getParam(IloCplex::EpRHS), 1));
 
 	// Si une solution initiale a été passée en argument, on la charge
 	if (sol_init) {

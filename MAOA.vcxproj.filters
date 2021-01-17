@@ -39,6 +39,9 @@
     <ClCompile Include="SolExacteV2.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="SolApprocheeHeuristique.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PRP.h">
@@ -60,6 +63,9 @@
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="SolExacteV2.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="SolApprocheeHeuristique.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>

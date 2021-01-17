@@ -149,6 +149,7 @@
     <ClCompile Include="PRP.cpp" />
     <ClCompile Include="SolApprocheeBase.cpp" />
     <ClCompile Include="SolApprocheeCoupe.cpp" />
+    <ClCompile Include="SolApprocheeHeuristique.cpp" />
     <ClCompile Include="SolExacteCoupe.cpp" />
     <ClCompile Include="SolExacteV2.cpp" />
     <ClCompile Include="Solution.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="SolApprocheeBase.h" />
     <ClInclude Include="PRP.h" />
     <ClInclude Include="SolApprocheeCoupe.h" />
+    <ClInclude Include="SolApprocheeHeuristique.h" />
     <ClInclude Include="SolExacteCoupe.h" />
     <ClInclude Include="SolExacteV2.h" />
     <ClInclude Include="Solution.h" />
