@@ -6,32 +6,66 @@
 
 #include "SolExacteV2.h"
 #include "PRP.h"
-#include "SolutionV2.h"
-
-//typedef IloArray<IloNumVarArray> NumVarMatrix;
+#include "Solution.h"
 
 ILOSTLBEGIN
 
-default_random_engine alea;
+// Contrainte 29
+ILOLAZYCONSTRAINTCALLBACK5(BriserCycle, int, n, int, l, int, K, vector<vector<vector<vector<IloNumVar>>>>, x, vector<vector<vector<IloNumVar>>>, z) {
+	for (int t = 0; t < l; t++) {
+		for (int k = 0; k < K; k++) {
+			unordered_set<int> S;
+			// On initialise S avec tous les sommets qui doivent être visités
+			for (int i = 1; i <= n; i++) {
+				if (getValue(z[i][k][t]) > 0.5) {
+					S.insert(i);
+				}
+			}
 
+			if (S.size() == 0) {
+				continue;
+			}
 
-SolExacteV2::SolExacteV2(PRP* inst) : solution(inst->n, inst->l) {
-	instance = inst;
-	int n = instance->n;
-	int l = instance->l;
-	int m = instance->m;
+			// On parcourt l'unique cycle contenant l'usine et on les supprime de S
+			int u;
+			for (u = 1; (u <= n) && (getValue(x[0][u][k][t]) < 0.5); u++);
+			if (u == n + 1) {
+				// Dans ce cas, rien ne sort de l'usine, on veut rajouter la contrainte avec S entier
+				// pour sauteur la prochaine boucle, on met u = 0
+				u = 0;
+			}
+			// Parcours du cycle de l'usine
+			while (u) {
+				S.erase(u);
+				int v;
+				for (v = 0; (v==u) || (getValue(x[u][v][k][t]) < 0.5); v++);
+				u = v;
+			}
 
-	w_sol.resize(n + 1);
-
-	for (int i = 1; i <= n; i++) {
-		w_sol[i].resize(l);
+			// S'il reste des éléments dans S après ce parcours, alors forcément S viole la contrainte
+			if (S.size() > 0) {
+				IloExpr cst(getEnv());
+				for (int i : S) {
+					for (int j : S) {
+						if (i != j) {
+							cst += x[i][j][k][t];
+						}
+					}
+				}
+				add(cst <= (int) S.size() - 1).end();
+			}
+		}
 	}
 }
 
-void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
+SolExacteV2::SolExacteV2(PRP* inst) : solution(inst->n, inst->l) {
+	instance = inst;
+}
+
+void SolExacteV2::solve(Solution* sol_init, double tolerance, bool verbose) {
 	int n = instance->n;
 	int l = instance->l;
-	int m = instance->m;
+	int K = min(instance->m, instance->n);
 
 	vector<double> M;
 	vector<vector<double>> tildeM;
@@ -69,29 +103,29 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 	vector<IloNumVar> p;
 	vector<IloNumVar> y;
 	vector<vector<IloNumVar>> I;
-	vector<vector<IloNumVar>> w;
-
-	vector < vector<vector<IloNumVar>>> q;
-	vector < vector<vector<IloNumVar>>> z;
-	vector < vector<vector<vector<IloNumVar>>>> x;
+	vector<vector<vector<IloNumVar>>> q;
+	vector<vector<vector<IloNumVar>>> z;
+	vector<vector<vector<vector<IloNumVar>>>> x;
 
 	p.resize(l);
 	y.resize(l);
 	I.resize(n + 1);
 	q.resize(n + 1);
 	z.resize(n + 1);
-	w.resize(n + 1);
 
 	I[0].resize(l);
-	z[0].resize(l);
+	z[0].resize(K);
+	for (int k = 0; k < K; k++) {
+		z[0][k].resize(l);
+	}
+
 	for (int i = 1; i <= n; i++) {
 		I[i].resize(l);
-		w[i].resize(l);
-		q[i].resize(m);
-		z[i].resize(m);
-		for (int j = 1; j <= m; j++) {
-			q[i][j].resize(l);
-			z[i][j].resize(l);
+		q[i].resize(K);
+		z[i].resize(K);
+		for (int k = 0; k < K; k++) {
+			q[i][k].resize(l);
+			z[i][k].resize(l);
 		}
 	}
 
@@ -99,8 +133,8 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 	for (int i = 0; i <= n; i++) {
 		x[i].resize(n+1);
 		for (int j = 0; j <= n; j++) {
-			x[i][j].resize(m);
-			for (int k = 0; k <= m; k++) {
+			x[i][j].resize(K);
+			for (int k = 0; k < K; k++) {
 				x[i][j][k].resize(l);
 			}
 		}
@@ -108,7 +142,6 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 
 	ostringstream varname;
 	for (int t = 0; t < l; t++) {
-
 		p[t] = IloNumVar(env, 0.0, IloInfinity, ILOFLOAT);
 		varname.str("");
 		varname << "p_" << t;
@@ -124,8 +157,8 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 		varname << "I_0_" << t;
 		I[0][t].setName(varname.str().c_str());
 
-		for (int k = 0; k < m; k++) {
-			z[0][k][t] = IloNumVar(env, 0.0, 1.0, ILOINT); //inférieur au nombre de véhicules m (contrainte 10)
+		for (int k = 0; k < K; k++) {
+			z[0][k][t] = IloNumVar(env, 0.0, 1.0, ILOINT);
 			varname.str("");
 			varname << "z_0_" << k << "_" << t;
 			z[0][k][t].setName(varname.str().c_str());
@@ -138,12 +171,7 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 			varname << "I_" << i << "_" << t;
 			I[i][t].setName(varname.str().c_str());
 
-			w[i][t] = IloNumVar(env, 0.0, instance->Q, ILOFLOAT);
-			varname.str("");
-			varname << "w_" << i << "_" << t;
-			w[i][t].setName(varname.str().c_str());
-
-			for (int k = 0; k < m; k++) {
+			for (int k = 0; k < K; k++) {
 				q[i][k][t] = IloNumVar(env, 0.0, IloInfinity, ILOFLOAT);
 				varname.str("");
 				varname << "q_" << i << "_" << k << "_" << t;
@@ -159,9 +187,9 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 
 	for (int i = 0; i <= n; i++) {
 		for (int j = 0; j <= n; j++) {
-			for (int k = 0; k < m; k++) {
-				for (int t = 0; t < l; t++) {
-					if (i != j) { // pas necessaire d'avoir des variables pour la diagonale
+			if (i != j) { // pas necessaire d'avoir des variables pour la diagonale
+				for (int k = 0; k < K; k++) {
+					for (int t = 0; t < l; t++) {
 						x[i][j][k][t] = IloNumVar(env, 0.0, 1.0, ILOINT);
 						varname.str("");
 						varname << "x_" << i << "_" << j << "_" << k << "_" << t;
@@ -176,39 +204,36 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 	//////  CONTRAINTES
 	//////////////
 
-
 	IloRangeArray CC(env);
 	int nbcst = 0;
 
 	ostringstream cstname;
 
 	if (true) {
-		//contrainte 21
+		//Contrainte 21 : I0,t-1 + pt = sum{i, k}(qi,k,t) + I0,t
+		// il faut traiter le cas t = 0 separement
 		IloExpr cst(env);
 		for (int i = 1; i <= n; i++) {
-			for (int k = 0; k < m; k++) {
+			for (int k = 0; k < K; k++) {
 				cst += q[i][k][0];
 			}
 		}
 		cst += I[0][0] - p[0];
 		CC.add(cst == instance->L0[0]);
-		
-
 		cstname.str("");
 		cstname << "Cst_onecol_0";
 		CC[nbcst].setName(cstname.str().c_str());
 		nbcst++;
 
-		for (int t = 0; t < l; t++) {
+		for (int t = 1; t < l; t++) {
 			IloExpr cst(env);
 			for (int i = 1; i <= n; i++) {
-				for (int k = 0; k < m; k++) {
+				for (int k = 0; k < K; k++) {
 					cst += q[i][k][t];
 				}
 			}
 			cst += I[0][t] - I[0][t - 1] - p[t];
 			CC.add(cst == 0);
-
 			cstname.str("");
 			cstname << "Cst_onecol_" << t;
 			CC[nbcst].setName(cstname.str().c_str());
@@ -219,7 +244,7 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 		// il faut traiter le cas t = 0 separement
 		for (int i = 1; i <= n; i++) {
 			IloExpr cst(env);
-			for (int k = 0; k < m; k++) {
+			for (int k = 0; k < K; k++) {
 				cst += q[i][k][0];
 			}
 			cst += -I[i][0];
@@ -233,7 +258,7 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 		for (int t = 1; t < l; t++) {
 			for (int i = 1; i <= n; i++) {
 				IloExpr cst(env);
-				for (int k = 0; k < m; k++) {
+				for (int k = 0; k < K; k++) {
 					cst += q[i][k][t];
 				}
 				cst += I[i][t - 1] - I[i][t];
@@ -271,7 +296,7 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 		// il faut traiter le cas t = 0 separement
 		for (int i = 1; i <= n; i++) {
 			IloExpr cst(env);
-			for (int k = 0; k < m; k++) {
+			for (int k = 0; k < K; k++) {
 				cst += q[i][k][0];
 			}
 			CC.add(cst <= instance->L[i] - instance->L0[i]);
@@ -284,7 +309,7 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 		for (int t = 1; t < l; t++) {
 			for (int i = 1; i <= n; i++) {
 				IloExpr cst(env);
-				for (int k = 0; k < m; k++) {
+				for (int k = 0; k < K; k++) {
 					cst += q[i][k][t];
 				}
 				cst += I[i][t - 1];
@@ -299,8 +324,8 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 		//contrainte 26 (les contraintes couplantes entre q et z): 
 		for (int t = 0; t < l; t++) {
 			for (int i = 1; i <= n; i++) {
-				IloExpr cst(env);
-				for (int k = 0; k < m; k++) {
+				for (int k = 0; k < K; k++) {
+					IloExpr cst(env);
 					cst += z[i][k][t] * tildeM[i][t];
 					cst -= q[i][k][t];
 					CC.add(cst >= 0);
@@ -311,21 +336,46 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 				}
 			}
 		}
-	}
-	
-	if (true) {
-		//contrainte 28
+
+		//contrainte 27
+		for (int t = 0; t < l; t++) {
+			for (int i = 1; i <= n; i++) {
+				IloExpr cst(env);
+				for (int k = 0; k < K; k++) {
+					cst += z[i][k][t];
+				}
+				CC.add(cst <= 1);
+				cstname.str("");
+				cstname << "Cst_sevencol_" << i << "_line_" << t;
+				CC[nbcst].setName(cstname.str().c_str());
+				nbcst++;
+			}
+		}
+
+		//contrainte 28 (découpée en deux car formulation incorrecte sinon)
 		for (int t = 0; t < l; t++) {
 			for (int i = 0; i <= n; i++) {
-				for (int k = 0; k < m; k++) {
-					IloExpr cst(env);
+				for (int k = 0; k < K; k++) {
+					IloExpr cst_a(env);
+					IloExpr cst_b(env);
 					for (int j = 0; j <= n; j++) {
-						cst += x[j][i][k][t] + x[i][j][k][t];
+						if (i != j) {
+							cst_a += x[j][i][k][t];
+							cst_b += x[i][j][k][t];
+						}
 					}
-					cst -= 2*z[i][k][t];
-					CC.add(cst >= 0);
+					cst_a -= z[i][k][t];
+					cst_b -= z[i][k][t];
+					
+					CC.add(cst_a == 0);
 					cstname.str("");
-					cstname << "Cst_8col_" << i << "_line_" << t << "_vehi_" << k;
+					cstname << "Cst_8a_col_" << i << "_line_" << t << "_vehi_" << k;
+					CC[nbcst].setName(cstname.str().c_str());
+					nbcst++;
+
+					CC.add(cst_b == 0);
+					cstname.str("");
+					cstname << "Cst_8b_col_" << i << "_line_" << t << "_vehi_" << k;
 					CC[nbcst].setName(cstname.str().c_str());
 					nbcst++;
 				}
@@ -333,18 +383,16 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 		}
 
 		//contrainte 29 exponentielle
-		//CPXaddindconstraints()
+		//traitée plus tard
 
 		//contrainte 30
-
 		for (int t = 0; t < l; t++) {
-			for (int k = 0; k < m; k++) {
+			for (int k = 0; k < K; k++) {
 				IloExpr cst(env);
-
 				for (int i = 1; i <= n; i++) {
 					cst += q[i][k][t];
 				}
-				cst -= z[0][k][t];
+				cst -= (instance->Q) * z[0][k][t];
 				CC.add(cst <= 0);
 				cstname.str("");
 				cstname << "Cst_10col_" << t  << "_vehi_" << k;
@@ -353,7 +401,6 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 			}
 		}
 	}
-
 
 	model.add(CC);
 
@@ -364,7 +411,6 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 	IloObjective obj = IloAdd(model, IloMinimize(env, 0.0));
 
 	for (int t = 0; t < l; t++) {
-
 		obj.setLinearCoef(p[t], instance->u);
 		obj.setLinearCoef(y[t], instance->f);
 
@@ -372,10 +418,10 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 			obj.setLinearCoef(I[i][t], instance->h[i]);
 			for (int j = 0; j <= n; j++) {
 				if (j != i) {
-					for (int k = 0; k < m; k++) {
-						obj.setLinearCoef(x[i][j][k][t], instance->cost(i, j));
+					double cost = instance->cost(i, j);
+					for (int k = 0; k < K; k++) {
+						obj.setLinearCoef(x[i][j][k][t], cost);
 					}
-					
 				}
 			}
 		}
@@ -388,9 +434,14 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 	IloCplex cplex(model);
 	if (!verbose) {
 		cplex.setOut(env.getNullStream());
+		cplex.setWarning(env.getNullStream());
 	}
+	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, tolerance);
 
-	// Si une solution iniale a été passée en argument, on la charge
+	//contrainte 29 comme LazyConstraint
+	cplex.use(BriserCycle(env, n, l, K, x, z));
+
+	// Si une solution initiale a été passée en argument, on la charge
 	if (sol_init) {
 
 		IloNumVarArray vars(env);
@@ -405,35 +456,89 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 			vals.add(sol_init->y[t]);
 			//y[t].setBounds(sol_init->y[t], sol_init->y[t]);
 
-			vars.add(I[0][t]);
-			vals.add(sol_init->I[0][t]);
-			//I[0][t].setBounds(sol_init->I[0][t], sol_init->I[0][t]);
-
-			for (int i = 1; i <= n; i++) {
+			for (int i = 0; i <= n; i++) {
 				vars.add(I[i][t]);
 				vals.add(sol_init->I[i][t]);
 				//I[i][t].setBounds(sol_init->I[i][t], sol_init->I[i][t]);
+			}
 
-				int qtemp = 0;
-				int ztemp = 0;
-				for (int k = 0; k < m; k++) {
+			// Parcours des tournées
+			int qtt_camions = sol_init->x[t][0].size();
+			for (int k = 0; k < qtt_camions; k++) {
+				// Ces variables vont contenir les valeurs de x, q, z pour la tournée k
+				vector<vector<bool>> x_tab;
+				vector<double> q_tab;
+				vector<bool> z_tab;
+				x_tab.resize(n + 1);
+				q_tab.resize(n + 1);
+				z_tab.resize(n + 1);
+				for (int i = 0; i <= n; i++) {
+					x_tab[i].resize(n + 1);
+					for (int j = 0; j <= n; j++) {
+						x_tab[i][j] = false;
+					}
+				}
+				z_tab[0] = true;
+				for (int i = 1; i <= n; i++) {
+					q_tab[i] = 0;
+					z_tab[i] = false;
+				}
+
+				// Parcours de la tornée et stockage dans les bonnes variables
+				int u = 0;
+				int v = sol_init->x[t][0][k];
+				x_tab[u][v] = true;
+				while (v) {
+					q_tab[v] = sol_init->q[v][t];
+					z_tab[v] = sol_init->z[v][t];
+
+					u = v;
+					v = sol_init->x[t][v][0];
+					x_tab[u][v] = true;
+				}
+
+				// Ajout dans les listes de vars et vals
+				for (int i = 0; i <= n; i++) {
+					for (int j = 0; j <= n; j++) {
+						if (i != j) {
+							vars.add(x[i][j][k][t]);
+							vals.add(x_tab[i][j]);
+							//x[i][j][t].setBounds(x_tab[i][j], x_tab[i][j]);
+						}
+					}
+				}
+
+				vars.add(z[0][k][t]);
+				vals.add(z_tab[0]);
+
+				for (int i = 1; i <= n; i++) {
 					vars.add(q[i][k][t]);
-					vals.add(sol_init->q[i][k][t]);
-					//q[i][t].setBounds(sol_init->q[i][t], sol_init->q[i][t]);
+					vals.add(q_tab[i]);
 
 					vars.add(z[i][k][t]);
-					vals.add(sol_init->z[i][k][t]);
-					//z[i][t].setBounds(sol_init->z[i][t], sol_init->z[i][t]);
+					vals.add(z_tab[i]);
 				}
 			}
 
-			for (int i = 0; i <= n; i++) {
-				for (int j = 0; j <= n; j++) {
-					if (i != j) {
-						for (int k = 0; k < m; k++) {
+			// Les autres camions ne sont pas utilisés : initialisation à 0
+			for (int k = qtt_camions; k < K; k++) {
+				// Initialisation à 0
+				vars.add(z[0][k][t]);
+				vals.add(0);
+
+				for (int i = 1; i <= n; i++) {
+					vars.add(q[i][k][t]);
+					vals.add(0);
+
+					vars.add(z[i][k][t]);
+					vals.add(0);
+				}
+
+				for (int i = 0; i <= n; i++) {
+					for (int j = 0; j <= n; j++) {
+						if (i != j) {
 							vars.add(x[i][j][k][t]);
-							vals.add(sol_init->x[i][j][k][t]);
-							//x[i][j][t].setBounds(x_tab[i][j], x_tab[i][j]);
+							vals.add(0);
 						}
 					}
 				}
@@ -450,22 +555,36 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 	for (int t = 0; t < l; t++) {
 		solution.p[t] = cplex.getValue(p[t]);
 		solution.y[t] = cplex.getValue(y[t]);
-		solution.I[0][t] = cplex.getValue(I[0][t]);
-		for (int k = 0; k < m; k++) solution.z[0][k][t] = cplex.getValue(z[0][k][t]);
-		for (int i = 1; i <= n; i++) {
-			solution.I[i][t] = cplex.getValue(I[i][t]);
-			for (int k = 0; k < m; k++) {
-				solution.q[i][k][t] = cplex.getValue(q[i][k][t]);
-				solution.z[i][k][t] = cplex.getValue(z[i][k][t]);
-			}
 
-			w_sol[i][t] = cplex.getValue(w[i][t]);
+		solution.z[0][t] = false;
+		for (int k = 0; k < K; k++) {
+			if (cplex.getValue(z[0][k][t]) > 0.5) {
+				solution.z[0][t] = true;
+			}
 		}
+
+		solution.I[0][t] = cplex.getValue(I[0][t]);
+
+		for (int i = 1; i <= n; i++) {
+			solution.z[i][t] = false;
+			solution.I[i][t] = cplex.getValue(I[i][t]);
+			solution.q[i][t] = 0;
+
+			for (int k = 0; k < K; k++) {
+				if (cplex.getValue(z[i][k][t]) > 0.5) {
+					solution.z[i][t] = true;
+				}
+				solution.q[i][t] += cplex.getValue(q[i][k][t]);
+			}
+		}
+
 		for (int i = 0; i <= n; i++) {
 			for (int j = 0; j <= n; j++) {
-				for (int k = 0; k < m; k++) {
-					if (i != j && cplex.getValue(x[i][j][k][t]) > 0.5) {
-						solution.x[i][j][k][t] = 1;
+				if (i != j) {
+					for (int k = 0; k < K; k++) {
+						if (cplex.getValue(x[i][j][k][t]) > 0.5) {
+							solution.x[t][i].push_back(j);
+						}
 					}
 				}
 			}
@@ -479,45 +598,24 @@ void SolExacteV2::solve(SolutionV2* sol_init, double tolerance, bool verbose) {
 	// Affichages
 	if (verbose) {
 		for (int t = 0; t < l; t++) {
-			cout << "p_" << t << ": " << solution.p[t] << endl;
-			cout << "y_" << t << ": " << solution.y[t] << endl;
-			cout << "I_0_" << t << ": " << solution.I[0][t] << endl;
-			for (int k = 0; k < m; k++) cout << "z_0_" << t << "_" << k << ": " << solution.z[0][k][t] << endl;
-			for (int i = 1; i <= n; i++) {
-				cout << "I_" << i << "_" << t << ": " << solution.I[i][t] << endl;
-				for (int k = 0; k < m; k++) {
-					cout << "q_" << i << "_" << t << "_" << k << ": " << solution.q[i][k][t] << endl;
-					cout << "z_" << i << "_" << t << "_" << k << ": " << solution.z[i][k][t] << endl;
-				}
+			cout << "Pas de temps " << t << endl;
 
-				cout << "w_" << i << "_" << t << ": " << w_sol[i][t] << endl;
-			}
+			for (int k = 0; k < K; k++) {
+				cout << "  Camion " << k << endl;
 
-			/*
-			cout << "tournee a l'instant t : " << t << endl;
-			for (int i = 0; i <= n; i++) {
-				cout << "Successeurs de " << i << " : ";
-				for (int k2 = 0; k2 < solution.x[t][i].size(); k2++) {
-					cout << solution.x[t][i][k2] << " ";
-				}
-				cout << endl;
-			}
-			cout << endl;
-			*/
-
-			for (int i = 0; i <= n; i++) {
-				cout << "i = " << i << ": ";
-				for (int j = 0; j <= n; j++) {
-					cout << "j = " << i << ": ";
-					if (i != j) {
-						for (int k = 0; k < m; k++) {
-							cout << "k = " << solution.x[i][j][k][t] << " ";
+				for (int i = 0; i <= n; i++) {
+					for (int j = 0; j <= n; j++) {
+						if (i != j) {
+							cout << cplex.getValue(x[i][j][k][t]) << " ";
+						} else {
+							cout << "0 ";
 						}
 					}
+					cout << endl;
 				}
-				cout << endl;
 			}
 		}
+
 		cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
 		cout << "valeur de la solution : " << solution.valeur << endl;
 	}

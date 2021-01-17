@@ -385,7 +385,7 @@ void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
 	// Définition de la tolérance
 	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, tolerance);
 
-	// Si une solution iniale a été passée en argument, on la charge
+	// Si une solution initiale a été passée en argument, on la charge
 	if (sol_init){
 
 		IloNumVarArray vars(env);

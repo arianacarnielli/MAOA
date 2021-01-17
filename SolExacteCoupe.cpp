@@ -372,7 +372,7 @@ int CoupesI::coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, doub
 			sum_q += getValue(q[i][t]);
 		}
 		int K = min((int)(sum_q / (instance->Q)) + 1, instance->m);
-		
+				
 		for (int i0 : NC) { // Boucle dans le point de l'ensemble S au début
 			unordered_set<int> S = {i0};
 			double q_S = getValue(q[i0][t]);
@@ -942,7 +942,7 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, bool verbose) {
 	// Coupe
 	cplex.use(Coupes(env, instance, x, q, z, cplex.getParam(IloCplex::EpRHS), 1));
 
-	// Si une solution iniale a été passée en argument, on la charge
+	// Si une solution initiale a été passée en argument, on la charge
 	if (sol_init){
 
 		IloNumVarArray vars(env);

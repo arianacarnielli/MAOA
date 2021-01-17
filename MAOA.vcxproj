@@ -153,7 +153,6 @@
     <ClCompile Include="SolExacteV2.cpp" />
     <ClCompile Include="Solution.cpp" />
     <ClCompile Include="SolExacteBase.cpp" />
-    <ClCompile Include="SolutionV2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SolApprocheeBase.h" />
@@ -163,7 +162,6 @@
     <ClInclude Include="SolExacteV2.h" />
     <ClInclude Include="Solution.h" />
     <ClInclude Include="SolExacteBase.h" />
-    <ClInclude Include="SolutionV2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
