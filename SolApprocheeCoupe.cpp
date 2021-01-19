@@ -397,6 +397,7 @@ void SolApprocheeCoupe::solve_LSP(bool verbose) {
 
 		obj.setLinearCoef(p[t], instance->u);
 		obj.setLinearCoef(y[t], instance->f);
+		obj.setLinearCoef(I[0][t], instance->h[0]);
 
 		for (int i = 1; i <= n; i++) {
 			obj.setLinearCoef(I[i][t], instance->h[i]);
