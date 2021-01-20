@@ -104,6 +104,113 @@ void tester_A_14(int indice = 1, int repeat = 10) {
     sortie.close();
 }
 
+void cli(int argc, char** argv) {
+    string mode = "EC";
+    string start = "AH";
+    int verbose = 1; 
+    int repeat = 10;
+    int timeout = -1;
+    int heur = 1000;
+    double tol = 1e-4;
+
+    ostringstream msg("");
+    msg << "un probleme est survenu dans le programme MAOA : " << endl;
+    try {
+        if (argc < 2) {
+            msg << "le programme a besoin d'un fichier .prp avec l'instance du probleme a resoudre.";
+            throw msg.str();
+        }
+        string filename = argv[1];
+        ifstream fic(filename);
+        if (!fic.is_open()) {
+            msg << "impossible d'ouvrir le fichier, il doit etre un fichier du type .prp.";
+            throw msg.str();
+        }
+        try {
+            PRP I(fic);
+        }
+        catch (...){
+            msg << "impossible d'ouvrir le fichier, il doit etre un fichier du type .prp.";
+            throw msg.str();
+        }
+
+        for (int i = 2; i < argc; i++) {
+            string opt = argv[i];
+            if (opt == "--mode") {
+                mode = argv[i + 1];
+                if (mode != "AB" && mode != "AC" && mode != "AH" && mode != "EB" && mode != "EC" && mode != "E2") {
+                    msg << "Mode de calcul non reconnu. " << endl;
+                    msg << "Le mode de calcul doit etre l'un des suivants :" << endl;
+                    msg << "AB : pour le mode approche de base" << endl;
+                    msg << "AC : pour le mode approche avec coupe" << endl;
+                    msg << "AH : pour le mode approche heuristique" << endl;
+                    msg << "EB : pour le mode exact (premiere formulation) de base" << endl;
+                    msg << "EC : pour le mode exact (premiere formulation) avec coupe (mode par defaut)" << endl;
+                    msg << "E2 : pour le mode exact (deuxieme formulation)" << endl;
+                    throw msg.str();
+                }
+            }
+            else if (opt == "--start") {
+                start = argv[i + 1];
+                if (start != "AB" && start != "AC" && start != "AH" && start != "none") {
+                    msg << "Mode de calcul de la solution de debut non reconnu. " << endl;
+                    msg << "Le mode de calcul doit etre l'un des suivants :" << endl;
+                    msg << "AB : pour le mode approche de base" << endl;
+                    msg << "AC : pour le mode approche avec coupe" << endl;
+                    msg << "AH : pour le mode approche heuristique (start par defaut)" << endl;
+                    msg << "none : sans calcul de solution initiale" << endl;
+                    throw msg.str();
+                }
+            }
+            else if (opt == "--verbose") {
+                verbose = stoi(argv[i + 1]);
+                if (verbose != 0 && verbose != 1 && verbose != 2) {
+                    msg << "Verbose doit etre 0, 1 et 2." << endl;
+                    msg << "0 : pas de messages affiches" << endl;
+                    msg << "1 : messages synthetiques synthetiques " << endl;
+                    msg << "2 : tous les messages affiches" << endl;
+                    throw msg.str();
+                }
+            }
+            else if (opt == "--repeat_approx") {
+                repeat = stoi(argv[i + 1]);
+                if (repeat <= 0) {
+                    msg << "repeat_approx doit etre un nombre entier plus grand que zero" << endl;
+                    throw msg.str();
+                }
+            }
+            else if (opt == "--timeout") {
+                timeout = stoi(argv[i + 1]);
+                if (timeout <= 0) {
+                    msg << "timeout doit etre un nombre entier plus grand que zero" << endl;
+                    throw msg.str();
+                }
+            }
+            else if (opt == "--heuristic_steps") {
+                heur = stoi(argv[i + 1]);
+                if (heur <= 0) {
+                    msg << "heuristic_steps doit etre un nombre entier plus grand que zero" << endl;
+                    throw msg.str();
+                }
+            }
+            else if (opt == "--tol_exact") {
+                tol = stod(argv[i + 1]);
+                if (tol <= 0 || tol >= 1) {
+                    msg << "tol_exact doit etre un nombre strictement compris entre 0 et 1" << endl;
+                    throw msg.str();
+                }
+            }
+        }
+
+        if (mode == "AH") {
+
+        }
+
+
+    } catch (string s) {
+        cout << s << endl;
+    }
+}
 
 int main(int argc, char** argv)
 {
@@ -183,5 +290,4 @@ int main(int argc, char** argv)
     //cout << "  Exacte v2 : " << sol_ex_v2.solution.valeur << endl;
 
     return 0;
-
 }
