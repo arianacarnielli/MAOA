@@ -7,6 +7,7 @@
 
 using namespace std;
 
+PRP::PRP() {}
 
 PRP::PRP(int nn, int ll){
   int i;

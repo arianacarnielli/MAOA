@@ -21,6 +21,7 @@ public:
 	vector<vector<bool>> z; // booléan indiquant si un envoi est fait au client i à l'instant t
 	vector<Graph> x; // graphes avec les tournées de véhicules (vecteur de temps)
 
+	Solution();
 	Solution(int nn, int ll);
 
 	void calcul_valeur(PRP& inst);

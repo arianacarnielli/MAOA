@@ -18,7 +18,7 @@ class PRP{
   double Q;   // vehicle capacity
   int m;     // number of vehicles
 
-  vector<pair<double,double> > xy; // clients coordinates
+  vector<pair<double,double>> xy; // clients coordinates
   vector<double> h;  // h_i unit inventory cost at node i
   vector<vector<double> > d; // d_it demand at customer i in period t
   vector<double> L; // maximum inventory level at node i
@@ -27,13 +27,13 @@ class PRP{
   int dist;  // 1 if the instance is from Archetti et al. 
              // 2 if the instance is from Boudia et al.,
   // if dist==1
-      // The transportation cost c_ij is 
-      // INT((SQRT((X(I)-X(J))**2+(Y(I)-Y(J))**2))+.5)
+  // The transportation cost c_ij is 
+  // INT((SQRT((X(I)-X(J))**2+(Y(I)-Y(J))**2))+.5)
   // if dist ==2:
-       double mc;   // kilometric cost
-       // The transportation cost c_ij is mc times the euclidian cost
+  double mc;   // kilometric cost
+  // The transportation cost c_ij is mc times the euclidian cost
   
-
+  PRP();
   PRP(int n, int l);
   PRP(istream&);
   void write_screen_txt();

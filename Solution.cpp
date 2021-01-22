@@ -5,6 +5,8 @@
 #include "PRP.h"
 #include "Solution.h"
 
+Solution::Solution() {}
+
 Solution::Solution(int nn, int ll) {
 	n = nn;
 	l = ll;
@@ -71,7 +73,7 @@ ostream& operator<<(ostream& os, const Solution& solution) {
 				os << "  0 --> ";
 				v = solution.x[t][0][j];
 				while (v) {
-					cout << v << " --> ";
+					os << v << " --> ";
 					v = solution.x[t][v][0];
 				}
 				os << "0" << endl;
