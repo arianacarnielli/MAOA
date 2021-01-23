@@ -92,7 +92,7 @@ void tester_A_14(int indice = 1, int repeat = 10) {
 
             SolExacteCoupe sol_exa_coupe = SolExacteCoupe(&I);
             start = chrono::high_resolution_clock::now();
-            sol_exa_coupe.solve(best, 1e-4, false);
+            sol_exa_coupe.solve(best, 1e-4, -1, "G1", false);
             end = chrono::high_resolution_clock::now();
             auto duration_exa_coupe = chrono::duration_cast<chrono::microseconds>(end - start);
 
@@ -107,9 +107,10 @@ void tester_A_14(int indice = 1, int repeat = 10) {
 void cli(int argc, char** argv) {
     string mode = "EC";
     string start = "AH";
+    string coupe = "G1";
     int verbose = 1; 
     int repeat = 10;
-    int timeout = -1;
+    double timeout = -1;
     int heur = 1000;
     double tol = 1e-4;
 
@@ -176,6 +177,22 @@ void cli(int argc, char** argv) {
                     throw msg.str();
                 }
             }
+            else if (opt == "--coupe") {
+                if (i + 1 >= argc) {
+                    msg << "Syntaxe invalide. L'option " << opt << " doit avoir une valeur." << endl;
+                    throw msg.str();
+                }
+                coupe = argv[i + 1];
+                if (coupe != "G1" && coupe != "G2" && coupe != "T1" && coupe != "T2") {
+                    msg << "Type de coupe pour la resolution exacte avec coupe non reconnu. " << endl;
+                    msg << "Le type de coupe doit etre l'un des suivants :" << endl;
+                    msg << "G1 : heuristique gloutonne 1 (coupe par defaut)" << endl;
+                    msg << "G2 : heuristique gloutonne 2" << endl;
+                    msg << "T1 : recherche tabou 1" << endl;
+                    msg << "T2 : recherche tabou 2" << endl;
+                    throw msg.str();
+                }
+            }
             else if (opt == "--verbose") {
                 if (i + 1 >= argc) {
                     msg << "Syntaxe invalide. L'option " << opt << " doit avoir une valeur." << endl;
@@ -217,13 +234,13 @@ void cli(int argc, char** argv) {
                     throw msg.str();
                 }
                 try {
-                    timeout = stoi(argv[i + 1]);
+                    timeout = stod(argv[i + 1]);
                 }
                 catch (...) {
                     timeout = -1;
                 }
                 if (timeout <= 0) {
-                    msg << "timeout doit etre un nombre entier plus grand que zero" << endl;
+                    msg << "timeout doit etre un nombre plus grand que zero" << endl;
                     throw msg.str();
                 }
             }
@@ -276,9 +293,10 @@ void cli(int argc, char** argv) {
                 msg << "Option " << argv[i] << " non reconnue. Les options sont :" << endl;
                 msg << "--mode : mode de resolution" << endl;
                 msg << "--start : algorithme approche pour la solution initiale" << endl;
+                msg << "--coupe : algorithme de coupe utilise pour le mode exact avec coupe" << endl;
                 msg << "--verbose : niveau de messages affiches" << endl;
                 msg << "--repeat_approx : nombre de tours de boucle de l'algorithme approche" << endl;
-                msg << "--timeout : temps maximal de resolution des algorithmes exacts" << endl;
+                msg << "--timeout : temps maximal de resolution des algorithmes exacts et de l'algorithe approche avec coupe" << endl;
                 msg << "--heuristic_steps : nombre de pas heuristiques de l'algorithme approche heuristique" << endl;
                 msg << "--tol_exact : tolerance pour l'algorithme exact" << endl;
                 msg << "--output : nom du fichier de sortie (sans espaces)" << endl;
@@ -293,7 +311,12 @@ void cli(int argc, char** argv) {
 
     if (!out_file.is_open()) {
         size_t pos_point = filename.rfind(".");
-        out_file.open(filename.substr(0, pos_point) + ".txt");
+        if (pos_point == string::npos) {
+            out_file.open(filename + ".txt");
+        }
+        else {
+            out_file.open(filename.substr(0, pos_point) + ".txt");
+        }
     }
 
     if (mode == "AB") {
@@ -416,7 +439,7 @@ void cli(int argc, char** argv) {
         if (mode == "EB") {
             SolExacteBase sol = SolExacteBase(&I);
             start_ex = chrono::high_resolution_clock::now();
-            sol.solve(ps, tol, verbose >= 2);
+            sol.solve(ps, tol, timeout, verbose >= 2);
             end_ex = chrono::high_resolution_clock::now();
             
             duration = (start != "none") ? chrono::duration_cast<chrono::microseconds>(end_ex - start_ex + end_app - start_app) : 
@@ -434,7 +457,7 @@ void cli(int argc, char** argv) {
         else if (mode == "EC") {
             SolExacteCoupe sol = SolExacteCoupe(&I);
             start_ex = chrono::high_resolution_clock::now();
-            sol.solve(ps, tol, verbose >= 2);
+            sol.solve(ps, tol, timeout, coupe, verbose >= 2);
             end_ex = chrono::high_resolution_clock::now();
 
             duration = (start != "none") ? chrono::duration_cast<chrono::microseconds>(end_ex - start_ex + end_app - start_app) :
@@ -452,7 +475,7 @@ void cli(int argc, char** argv) {
         else if (mode == "E2") {
             SolExacteV2 sol = SolExacteV2(&I);
             start_ex = chrono::high_resolution_clock::now();
-            sol.solve(ps, tol, verbose >= 2);
+            sol.solve(ps, tol, timeout, verbose >= 2);
             end_ex = chrono::high_resolution_clock::now();
 
             duration = (start != "none") ? chrono::duration_cast<chrono::microseconds>(end_ex - start_ex + end_app - start_app) :
@@ -527,11 +550,11 @@ int main(int argc, char** argv)
     /*SolExacteBase sol_ex_base = SolExacteBase(&I);
     sol_ex_base.solve(nullptr, 1e-6, false);*/
     
-    SolExacteCoupe sol_ex_coupe = SolExacteCoupe(&I);
-	sol_ex_coupe.solve(&(sol_app_heur.meilleure), 1e-6, true);
+    /*SolExacteCoupe sol_ex_coupe = SolExacteCoupe(&I);
+	sol_ex_coupe.solve(&(sol_app_heur.meilleure), 1e-6, true);*/
 
-    /*SolExacteV2 sol_ex_v2 = SolExacteV2(&I);
-    sol_ex_v2.solve(&(sol_app_coupe.meilleure), 1e-6, true);*/
+    SolExacteV2 sol_ex_v2 = SolExacteV2(&I);
+    sol_ex_v2.solve(&(sol_app_heur.meilleure), 1e-6, -1, true);
 
     //cout << sol_app_base.meilleure << endl;
     //cout << sol_app_coupe.meilleure << endl;
@@ -548,8 +571,8 @@ int main(int argc, char** argv)
     cout << "  Approchee heuristique : " << sol_app_heur.meilleure.valeur << endl;
     cout << "  |-- Temps de calcul : " << duration_app_heur.count() / 1000 << " ms" << endl;
     //cout << "  Exacte base : " << sol_ex_base.solution.valeur << endl;
-    cout << "  Exacte coupe : " << sol_ex_coupe.solution.valeur << endl;
-    //cout << "  Exacte v2 : " << sol_ex_v2.solution.valeur << endl;
+    //cout << "  Exacte coupe : " << sol_ex_coupe.solution.valeur << endl;
+    cout << "  Exacte v2 : " << sol_ex_v2.solution.valeur << endl;
 
     return 0;
 }

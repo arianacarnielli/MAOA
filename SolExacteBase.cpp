@@ -22,7 +22,7 @@ SolExacteBase::SolExacteBase(PRP* inst): solution(inst->n, inst->l) {
 	}
 }
 
-void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
+void SolExacteBase::solve(Solution* sol_init, double tolerance, double time_limit, bool verbose) {
 	
 	int n = instance->n;
 	int l = instance->l;
@@ -384,6 +384,11 @@ void SolExacteBase::solve(Solution* sol_init, double tolerance, bool verbose) {
 	}
 	// Définition de la tolérance
 	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, tolerance);
+
+	// Temps maximal de résolution
+	if (time_limit > 0) {
+		cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
+	}
 
 	// Si une solution initiale a été passée en argument, on la charge
 	if (sol_init){

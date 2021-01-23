@@ -18,7 +18,7 @@ public:
 
 	SolExacteCoupe(PRP*);
 
-	void solve(Solution* sol_init = nullptr, double tolerance = 0.01, bool verbose = false);
+	void solve(Solution* sol_init = nullptr, double tolerance = 1e-4, double time_limit = -1, string coupe = "G1", bool verbose = false);
 };
 
 #endif

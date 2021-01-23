@@ -204,16 +204,19 @@ ILOLAZYCONSTRAINTCALLBACK5(BriserCycle, int, n, int, l, int, K, vector<vector<ve
 			}
 
 			// S'il reste des éléments dans S après ce parcours, alors forcément S viole la contrainte
+			// On la rajoute pour tous les k
 			if (S.size() > 0) {
-				IloExpr cst(getEnv());
-				for (int i : S) {
-					for (int j : S) {
-						if (i != j) {
-							cst += x[i][j][k][t];
+				for (int k2 = 0; k2 < K; k2++) {
+					IloExpr cst(getEnv());
+					for (int i : S) {
+						for (int j : S) {
+							if (i != j) {
+								cst += x[i][j][k2][t];
+							}
 						}
 					}
+					add(cst <= (int)S.size() - 1).end();
 				}
-				add(cst <= (int) S.size() - 1).end();
 			}
 		}
 	}
@@ -223,7 +226,7 @@ SolExacteV2::SolExacteV2(PRP* inst) : solution(inst->n, inst->l) {
 	instance = inst;
 }
 
-void SolExacteV2::solve(Solution* sol_init, double tolerance, bool verbose) {
+void SolExacteV2::solve(Solution* sol_init, double tolerance, double time_limit, bool verbose) {
 	int n = instance->n;
 	int l = instance->l;
 	int K = min(instance->m, instance->n);
@@ -604,6 +607,11 @@ void SolExacteV2::solve(Solution* sol_init, double tolerance, bool verbose) {
 
 	//UserCuts pour les contraintes de renforcement
 	cplex.use(Coupes2(env, instance, x, q, cplex.getParam(IloCplex::EpRHS), 1));
+
+	// Temps maximal de résolution
+	if (time_limit > 0) {
+		cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
+	}
 
 	// Si une solution initiale a été passée en argument, on la charge
 	if (sol_init) {
