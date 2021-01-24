@@ -1052,6 +1052,8 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 	// Doit donner la même chose que cplex.getObjValue()
 	solution.calcul_valeur(*instance);
 
+	env.end();
+
 	// Affichages
 	//if (verbose) {
 	//	for (int t = 0; t < l; t++) {

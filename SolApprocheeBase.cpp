@@ -283,6 +283,8 @@ void SolApprocheeBase::solve_LSP(bool verbose) {
 		}
 	}
 
+	env.end();
+
 	//if (verbose) {
 	//	for (int t = 0; t < l; t++) {
 	//		cout << "p_" << t << ": " << courante.p[t] << endl;
@@ -472,6 +474,8 @@ void SolApprocheeBase::solve_VRP_MTZ(int t, bool verbose) {
 	//		cout << endl;
 	//	}
 	//}
+
+	env.end();
 }
 
 void SolApprocheeBase::calcul_SC(int t, bool verbose) {

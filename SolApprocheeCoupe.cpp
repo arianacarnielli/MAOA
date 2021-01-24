@@ -428,6 +428,8 @@ void SolApprocheeCoupe::solve_LSP(bool verbose) {
 		}
 	}
 
+	env.end();
+
 	//if (verbose) {
 	//	for (int t = 0; t < l; t++) {
 	//		cout << "p_" << t << ": " << courante.p[t] << endl;
@@ -632,6 +634,8 @@ void SolApprocheeCoupe::solve_VRP_MTZ(int t, double time_limit, bool verbose) {
 	//		cout << endl;
 	//	}
 	//}
+
+	env.end();
 }
 
 void SolApprocheeCoupe::calcul_SC(int t, bool verbose) {

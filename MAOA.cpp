@@ -20,7 +20,7 @@ using namespace std;
 
 default_random_engine alea(time(0));
 
-void tester_A_14(int indice = 1, int repeat = 10) {
+void tester_A_14(int indice = 1, int indice2 = 1, int repeat = 10) {
     ofstream sortie("resultats_A_14.csv");
     sortie << "Instances,Approx Base Valeur,Approx Base Temps,Approx Coupe Valeur,Approx Coupe Temps,Approx Heur Valeur,Approx Heur Temps,Exacte Coupe Valeur,Exacte Coupe Temps" << endl;
     sortie.flush();
@@ -29,7 +29,8 @@ void tester_A_14(int indice = 1, int repeat = 10) {
     chrono::time_point<chrono::high_resolution_clock> end;
 
     for (int i = indice; i <= 96; i++) {
-        for (int j = 1; j <= 5; j++) {
+        for (int j = indice2; j <= 5; j++) {
+            indice2 = 1;
             ostringstream nom("");
             nom << "A_014_ABS" << i << "_15_" << j;
 
@@ -101,6 +102,358 @@ void tester_A_14(int indice = 1, int repeat = 10) {
             cout << "ok " << duration_exa_coupe.count() / 1000.0 << endl;
         }
     }
+    sortie.close();
+}
+
+void tester_coupe_vs_v2(int repeat) {
+    ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
+    if (!fic.is_open()) {
+        cerr << "impossible d'ouvrir le fichier";
+        return;
+    }
+
+    PRP I(fic);
+
+    fic.close();
+
+    ofstream sortie("resultsts_coupe_vs_v2.csv");
+
+    sortie << "Iteration,Coupe Valeur,Coupe Temps,V2 Valeur,V2 Temps" << endl;
+
+    chrono::time_point<chrono::high_resolution_clock> start;
+    chrono::time_point<chrono::high_resolution_clock> end;
+
+    SolApprocheeHeuristique sol_app = SolApprocheeHeuristique(&I);
+    start = chrono::high_resolution_clock::now();
+    sol_app.solve(10, 1000, false);
+    end = chrono::high_resolution_clock::now();
+    double duration_app = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+    double duration;
+
+    for (int i = 0; i < repeat; i++) {
+        sortie << i << ",";
+        cout << "i = " << i << endl;
+
+        cout << "  Coupe : ";
+
+        SolExacteCoupe sol_coupe = SolExacteCoupe(&I);
+        start = chrono::high_resolution_clock::now();
+        sol_coupe.solve(&(sol_app.meilleure), 1e-6, -1, "G1", false);
+        end = chrono::high_resolution_clock::now();
+        duration = duration_app + chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        sortie << sol_coupe.solution.valeur << "," << duration << ",";
+
+        cout << duration << endl;
+
+        cout << "  V2 : ";
+
+        SolExacteV2 sol_v2 = SolExacteV2(&I);
+        start = chrono::high_resolution_clock::now();
+        sol_v2.solve(&(sol_app.meilleure), 1e-6, -1, false);
+        end = chrono::high_resolution_clock::now();
+        duration = duration_app + chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        sortie << sol_v2.solution.valeur << "," << duration << endl;
+
+        cout << duration << endl;
+    }
+
+    sortie.close();
+}
+
+void tester_instance_0(int repeat) {
+    ifstream fic("PRP_instances/Instance_1.prp");
+    if (!fic.is_open()) {
+        cerr << "impossible d'ouvrir le fichier";
+        return;
+    }
+
+    PRP I(fic);
+
+    double mean_time = 0;
+    double std_time = 0;
+    double mean_val = 0;
+    double std_val = 0;
+
+    chrono::time_point<chrono::high_resolution_clock> start;
+    chrono::time_point<chrono::high_resolution_clock> end;
+
+    cout << "Resolution approchee base";
+    for (int i = 0; i < repeat; i++) {
+        SolApprocheeBase sol = SolApprocheeBase(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(10, false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.meilleure.valeur;
+        std_val += sol.meilleure.valeur * sol.meilleure.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time/(repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val/(repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution approchee coupe";
+    for (int i = 0; i < repeat; i++) {
+        SolApprocheeCoupe sol = SolApprocheeCoupe(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(10, -1, false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.meilleure.valeur;
+        std_val += sol.meilleure.valeur * sol.meilleure.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution approchee heuristique";
+    for (int i = 0; i < repeat; i++) {
+        SolApprocheeHeuristique sol = SolApprocheeHeuristique(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(10, 1000, false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.meilleure.valeur;
+        std_val += sol.meilleure.valeur * sol.meilleure.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution exacte base";
+    for (int i = 0; i < repeat; i++) {
+        SolExacteBase sol = SolExacteBase(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(nullptr, 1e-6, -1, false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.solution.valeur;
+        std_val += sol.solution.valeur * sol.solution.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution exacte coupe gloutonne 1";
+    for (int i = 0; i < repeat; i++) {
+        SolExacteCoupe sol = SolExacteCoupe(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(nullptr, 1e-6, -1, "G1", false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.solution.valeur;
+        std_val += sol.solution.valeur * sol.solution.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution exacte coupe gloutonne 2";
+    for (int i = 0; i < repeat; i++) {
+        SolExacteCoupe sol = SolExacteCoupe(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(nullptr, 1e-6, -1, "G2", false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.solution.valeur;
+        std_val += sol.solution.valeur * sol.solution.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution exacte coupe tabou 1";
+    for (int i = 0; i < repeat; i++) {
+        SolExacteCoupe sol = SolExacteCoupe(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(nullptr, 1e-6, -1, "T1", false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.solution.valeur;
+        std_val += sol.solution.valeur * sol.solution.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution exacte coupe tabou 2";
+    for (int i = 0; i < repeat; i++) {
+        SolExacteCoupe sol = SolExacteCoupe(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(nullptr, 1e-6, -1, "T2", false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.solution.valeur;
+        std_val += sol.solution.valeur * sol.solution.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+
+    cout << "Resolution exacte v2";
+    for (int i = 0; i < repeat; i++) {
+        SolExacteV2 sol = SolExacteV2(&I);
+        start = chrono::high_resolution_clock::now();
+        sol.solve(nullptr, 1e-6, -1, false);
+        end = chrono::high_resolution_clock::now();
+        double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        mean_time += duration;
+        std_time += duration * duration;
+
+        mean_val += sol.solution.valeur;
+        std_val += sol.solution.valeur * sol.solution.valeur;
+
+        cout << ".";
+    }
+    cout << " ok!" << endl;
+    mean_time /= repeat;
+    std_time = sqrt(std_time / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_time * mean_time);
+    mean_val /= repeat;
+    std_val = sqrt(std_val / (repeat - 1.0) - repeat / (repeat - 1.0) * mean_val * mean_val);
+    cout << "Temps moyen : " << mean_time << " +- " << std_time << " ms" << endl;
+    cout << "Valeur moyenne : " << mean_val << " +- " << std_val << endl << endl;
+    mean_time = std_time = mean_val = std_val = 0;
+}
+
+void tester_app_heuristique_all(int repeat) {
+    ofstream sortie("resultats_app_heuristique.csv");
+    sortie << "Instances,Valeur,Temps" << endl;
+    sortie.flush();
+
+    vector<string> filenames;
+    vector<pair<string, string>> A_sizes = { {"014", "15"}, {"050", "50"}, {"100", "100"} };
+    vector<string> B_sizes = { "050", "100", "200" };
+
+    chrono::time_point<chrono::high_resolution_clock> start;
+    chrono::time_point<chrono::high_resolution_clock> end;
+
+    for (auto size : A_sizes) {
+        for (int i = 1; i <= 96; i++) {
+            for (int j = 1; j <= 5; j++) {
+                ostringstream nom("");
+                nom << "A_" << size.first << "_ABS" << i << "_" << size.second << "_" << j;
+                filenames.push_back(nom.str());
+            }
+        }
+    }
+    for (string size : B_sizes) {
+        for (int i = 1; i <= 30; i++) {
+            ostringstream nom("");
+            nom << "B_" << size << "_instance" << i;
+            filenames.push_back(nom.str());
+        }
+    }
+
+    for (string filename : filenames) {
+        sortie << filename << ",";
+
+        ifstream fic("PRP_instances/" + filename + ".prp");
+        PRP I(fic);
+        fic.close();
+
+        cout << "Instance " << filename << " : ";
+
+        SolApprocheeHeuristique sol_app_heur = SolApprocheeHeuristique(&I);
+        start = chrono::high_resolution_clock::now();
+        sol_app_heur.solve(repeat, 1000, false);
+        end = chrono::high_resolution_clock::now();
+        double duration_app_heur = chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0;
+
+        sortie << sol_app_heur.meilleure.valeur << "," << duration_app_heur << endl;
+        sortie.flush();
+        cout << duration_app_heur << endl;
+    }
+
     sortie.close();
 }
 
@@ -496,26 +849,32 @@ void cli(int argc, char** argv) {
 
 int main(int argc, char** argv)
 {
-    cli(argc, argv);
-    return 0;
+    /*cli(argc, argv);
+    return 0;*/
 
-    int s = 1;
-    if (argc == 2) {
-        s = stoi(argv[1]);
+    /*int indice = 1;
+    int indice2 = 1;
+    if (argc >= 2) {
+        indice = stoi(argv[1]);
     }
+    if (argc >= 3) {
+        indice2 = stoi(argv[2]);
+    }
+    tester_A_14(indice, indice2);
+    return 0;*/
 
-    tester_A_14(s);
-
+    tester_coupe_vs_v2(10);
+    //tester_instance_0(10);
     return 0;
 
     //instance de test (type A)
-    //ifstream fic("PRP_instances/Instance_0.prp");
+    //ifstream fic("PRP_instances/Instance_1.prp");
 
     //type A
     ifstream fic("PRP_instances/A_014_ABS1_15_1.prp");
 
     //type B
-    //ifstream fic("../PRP_instances/B_200_instance1.prp");
+    //ifstream fic("../PRP_instances/B_050_instance1.prp");
 
     if (!fic.is_open()) {
         cerr << "impossible d'ouvrir le fichier";
@@ -543,7 +902,7 @@ int main(int argc, char** argv)
 
     SolApprocheeHeuristique sol_app_heur = SolApprocheeHeuristique(&I);
     start = chrono::high_resolution_clock::now();
-    sol_app_heur.solve(1, 1000, false);
+    sol_app_heur.solve(10, 1000, false);
     end = chrono::high_resolution_clock::now();
     auto duration_app_heur = chrono::duration_cast<chrono::microseconds>(end - start);
 

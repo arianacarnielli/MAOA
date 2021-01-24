@@ -291,6 +291,8 @@ void SolApprocheeHeuristique::solve_LSP(bool verbose) {
 		}
 	}
 
+	env.end();
+
 	//if (verbose) {
 	//	for (int t = 0; t < l; t++) {
 	//		cout << "p_" << t << ": " << courante.p[t] << endl;
@@ -456,6 +458,8 @@ void SolApprocheeHeuristique::solve_VRP_heuristique(int t, int nb_steps_optim, b
 				tournees.push_back(new_tournee);
 			}
 		}
+
+		env.end();
 	}
 
 	if (verbose) {
