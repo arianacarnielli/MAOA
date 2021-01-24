@@ -116,7 +116,7 @@ void tester_coupe_vs_v2(int repeat) {
 
     fic.close();
 
-    ofstream sortie("resultsts_coupe_vs_v2.csv");
+    ofstream sortie("resultats_coupe_vs_v2.csv");
 
     sortie << "Iteration,Coupe Valeur,Coupe Temps,V2 Valeur,V2 Temps" << endl;
 
