@@ -849,8 +849,8 @@ void cli(int argc, char** argv) {
 
 int main(int argc, char** argv)
 {
-    /*cli(argc, argv);
-    return 0;*/
+    cli(argc, argv);
+    return 0;
 
     /*int indice = 1;
     int indice2 = 1;
@@ -863,9 +863,10 @@ int main(int argc, char** argv)
     tester_A_14(indice, indice2);
     return 0;*/
 
-    tester_coupe_vs_v2(10);
+    //tester_coupe_vs_v2(10);
     //tester_instance_0(10);
-    return 0;
+    /*tester_app_heuristique_all(10);
+    return 0;*/
 
     //instance de test (type A)
     //ifstream fic("PRP_instances/Instance_1.prp");

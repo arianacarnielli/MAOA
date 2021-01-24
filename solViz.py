@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 import graphviz as gv
 
@@ -63,4 +65,4 @@ def show(inst) :
     g.save(inst+"graph")
     return
 
-show("A_014_ABS1_15_1")
+show("PRP_instances/A_014_ABS1_15_1")
