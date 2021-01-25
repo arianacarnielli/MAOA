@@ -63,8 +63,6 @@ L = [(df["Approx Base Valeur"], "SolApprocheeBase"),\
  
 L = [(a / df["Exacte Coupe Valeur"] - 1, b) for a, b in L]
     
-L = [(a[df["Approx Base Valeur"] >= df["Exacte Coupe Valeur"]], b) for a, b in L]
-    
 minEcart = min(col.min() for col, _ in L)
 maxEcart = max(col.max() for col, _ in L)
 
