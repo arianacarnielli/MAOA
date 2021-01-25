@@ -240,6 +240,19 @@ void SolApprocheeBase::solve_LSP(bool verbose) {
 		}
 	}
 
+	// Contrainte de charge maximale
+	for (int t = 0; t < l; t++) {
+		IloExpr cst(env);
+		for (int i = 1; i <= n; i++) {
+			cst += q[i][t];
+		}
+		CC.add(cst <= instance->Q * instance->m);
+		cstname.str("");
+		cstname << "Cst_charge_" << t;
+		CC[nbcst].setName(cstname.str().c_str());
+		nbcst++;
+	}
+
 	model.add(CC);
 
 	//////////////

@@ -248,6 +248,19 @@ void SolApprocheeHeuristique::solve_LSP(bool verbose) {
 		}
 	}
 
+	// Contrainte de charge maximale
+	for (int t = 0; t < l; t++) {
+		IloExpr cst(env);
+		for (int i = 1; i <= n; i++) {
+			cst += q[i][t];
+		}
+		CC.add(cst <= instance->Q * instance->m);
+		cstname.str("");
+		cstname << "Cst_charge_" << t;
+		CC[nbcst].setName(cstname.str().c_str());
+		nbcst++;
+	}
+
 	model.add(CC);
 
 	//////////////
@@ -288,6 +301,338 @@ void SolApprocheeHeuristique::solve_LSP(bool verbose) {
 			courante.I[i][t] = cplex.getValue(I[i][t]);
 			courante.q[i][t] = cplex.getValue(q[i][t]);
 			courante.z[i][t] = cplex.getValue(z[i][t]);
+		}
+	}
+
+	env.end();
+
+	//if (verbose) {
+	//	for (int t = 0; t < l; t++) {
+	//		cout << "p_" << t << ": " << courante.p[t] << endl;
+	//		cout << "y_" << t << ": " << courante.y[t] << endl;
+	//		cout << "I_0_" << t << ": " << courante.I[0][t] << endl;
+	//		for (int i = 1; i <= n; i++) {
+	//			cout << "I_" << i << "_" << t << ": " << courante.I[i][t] << endl;
+	//			cout << "q_" << i << "_" << t << ": " << courante.q[i][t] << endl;
+	//			cout << "z_" << i << "_" << t << ": " << courante.z[i][t] << endl;
+	//		}
+	//		cout << endl;
+	//	}
+	//}
+}
+
+void SolApprocheeHeuristique::solve_LSP_bis(bool verbose) {
+	int n = instance->n;
+	int l = instance->l;
+	int K = min(instance->n, instance->m);
+
+
+	vector<double> M;
+	vector<vector<double>> tildeM;
+	M.resize(l);
+	tildeM.resize(n + 1);
+	for (int i = 1; i <= n; i++) tildeM[i].resize(l);
+
+	vector<double> part_sum;
+	part_sum.resize(n + 1);
+
+	// on initialise les valeurs de M et tildeM
+	for (int i = 1; i <= n; i++) part_sum[i] = 0;
+	double sum;
+	for (int t = l - 1; t >= 0; t--) {
+		sum = 0;
+		for (int i = 1; i <= n; i++) {
+			part_sum[i] += instance->d[i][t];
+			tildeM[i][t] = min({ instance->L[i], instance->Q, part_sum[i] });
+			sum += part_sum[i];
+		}
+		M[t] = min(instance->C, sum);
+	}
+
+
+	//////////////
+	//////  CPLEX INITIALIZATION
+	//////////////
+
+	IloEnv   env;
+	IloModel model(env);
+
+	////////////////////////
+	//////  VAR
+	////////////////////////
+
+	vector<IloNumVar> p;
+	vector<IloNumVar> y;
+	vector<vector<IloNumVar>> I;
+	vector<vector<vector<IloNumVar>>> q;
+	vector<vector<vector<IloNumVar>>> z;
+
+	p.resize(l);
+	y.resize(l);
+	I.resize(n + 1);
+	q.resize(n + 1);
+	z.resize(n + 1);
+
+	I[0].resize(l);
+	for (int i = 1; i <= n; i++) {
+		I[i].resize(l);
+		q[i].resize(K);
+		z[i].resize(K);
+		for (int k = 0; k < K; k++) {
+			q[i][k].resize(l);
+			z[i][k].resize(l);
+		}
+	}
+
+	ostringstream varname;
+	for (int t = 0; t < l; t++) {
+
+		p[t] = IloNumVar(env, 0.0, IloInfinity, ILOFLOAT);
+		varname.str("");
+		varname << "p_" << t;
+		p[t].setName(varname.str().c_str());
+
+		y[t] = IloNumVar(env, 0.0, 1.0, ILOINT);
+		varname.str("");
+		varname << "y_" << t;
+		y[t].setName(varname.str().c_str());
+
+		I[0][t] = IloNumVar(env, 0.0, IloInfinity, ILOFLOAT);
+		varname.str("");
+		varname << "I_0_" << t;
+		I[0][t].setName(varname.str().c_str());
+
+		for (int i = 1; i <= n; i++) {
+			I[i][t] = IloNumVar(env, 0.0, IloInfinity, ILOFLOAT);
+			varname.str("");
+			varname << "I_" << i << "_" << t;
+			I[i][t].setName(varname.str().c_str());
+
+			for (int k = 0; k < K; k++) {
+				q[i][k][t] = IloNumVar(env, 0.0, IloInfinity, ILOFLOAT);
+				varname.str("");
+				varname << "q_" << i << "_" << k << "_" << t;
+				q[i][k][t].setName(varname.str().c_str());
+
+				z[i][k][t] = IloNumVar(env, 0.0, 1.0, ILOINT);
+				varname.str("");
+				varname << "z_" << i << "_" << k << "_" << t;
+				z[i][k][t].setName(varname.str().c_str());
+			}
+		}
+	}
+	//////////////
+	//////  CONTRAINTES
+	//////////////
+
+	IloRangeArray CC(env);
+	int nbcst = 0;
+	ostringstream cstname;
+
+	//Contrainte 1 : I0,t-1 + pt = sum{i}(qi,t) + I0,t
+	// il faut traiter le cas t = 0 separement
+	IloExpr cst(env);
+	for (int i = 1; i <= n; i++) {
+		for (int k = 0; k < K; k++) {
+			cst += q[i][k][0];
+		}
+	}
+	cst += I[0][0] - p[0];
+	CC.add(cst == instance->L0[0]);
+
+	cstname.str("");
+	cstname << "Cst_onecol_0";
+	CC[nbcst].setName(cstname.str().c_str());
+	nbcst++;
+
+	for (int t = 1; t < l; t++) {
+		IloExpr cst(env);
+		for (int i = 1; i <= n; i++) {
+			for (int k = 0; k < K; k++) {
+				cst += q[i][k][t];
+			}
+		}
+		cst += I[0][t] - I[0][t - 1] - p[t];
+		CC.add(cst == 0);
+
+		cstname.str("");
+		cstname << "Cst_onecol_" << t;
+		CC[nbcst].setName(cstname.str().c_str());
+		nbcst++;
+	}
+
+	//contrainte 2 : 
+	// il faut traiter le cas t = 0 separement
+	for (int i = 1; i <= n; i++) {
+		IloExpr cst(env);
+		for (int k = 0; k < K; k++) {
+			cst += q[i][k][0];
+		}
+		cst -= I[i][0];
+		CC.add(cst == instance->d[i][0] - instance->L0[i]);
+		cstname.str("");
+		cstname << "Cst_twocol_" << i << "_line_0";
+		CC[nbcst].setName(cstname.str().c_str());
+		nbcst++;
+	}
+
+	for (int t = 1; t < l; t++) {
+		for (int i = 1; i <= n; i++) {
+			IloExpr cst(env);
+			for (int k = 0; k < K; k++) {
+				cst += q[i][k][t];
+			}
+			cst += I[i][t - 1] - I[i][t];
+			CC.add(cst == instance->d[i][t]);
+			cstname.str("");
+			cstname << "Cst_twocol_" << i << "_line_" << t;
+			CC[nbcst].setName(cstname.str().c_str());
+			nbcst++;
+		}
+	}
+
+	//contrainte 3 : 
+	for (int t = 0; t < l; t++) {
+		IloExpr cst(env);
+		cst += M[t] * y[t] - p[t];
+		CC.add(cst >= 0);
+		cstname.str("");
+		cstname << "Cst_threecol_" << t;
+		CC[nbcst].setName(cstname.str().c_str());
+		nbcst++;
+	}
+
+	//contrainte 4 : 
+	for (int t = 0; t < l; t++) {
+		IloExpr cst(env);
+		cst += I[0][t];
+		CC.add(cst <= instance->L[0]);
+		cstname.str("");
+		cstname << "Cst_fourcol_" << t;
+		CC[nbcst].setName(cstname.str().c_str());
+		nbcst++;
+	}
+
+	//contrainte 5 : 
+	// il faut traiter le cas t = 0 separement
+	for (int i = 1; i <= n; i++) {
+		IloExpr cst(env);
+		for (int k = 0; k < K; k++) {
+			cst += q[i][k][0];
+		}
+		CC.add(cst <= instance->L[i] - instance->L0[i]);
+		cstname.str("");
+		cstname << "Cst_fivecol_" << i << "_line_0";
+		CC[nbcst].setName(cstname.str().c_str());
+		nbcst++;
+	}
+
+	for (int t = 1; t < l; t++) {
+		for (int i = 1; i <= n; i++) {
+			IloExpr cst(env);
+			for (int k = 0; k < K; k++) {
+				cst += q[i][k][t];
+			}
+			cst += I[i][t - 1];
+			CC.add(cst <= instance->L[i]);
+			cstname.str("");
+			cstname << "Cst_fivecol_" << i << "_line_" << t;
+			CC[nbcst].setName(cstname.str().c_str());
+			nbcst++;
+		}
+	}
+
+	//contrainte 6 (les contraintes couplantes entre q et z): 
+	for (int t = 0; t < l; t++) {
+		for (int i = 1; i <= n; i++) {
+			for (int k = 0; k < K; k++) {
+				IloExpr cst(env);
+				cst += tildeM[i][t] * z[i][k][t] - q[i][k][t];
+				CC.add(cst >= 0);
+				cstname.str("");
+				cstname << "Cst_sixcol_" << i << "_line_" << t;
+				CC[nbcst].setName(cstname.str().c_str());
+				nbcst++;
+			}
+		}
+	}
+
+	// Contraintes d'un vehicule par client
+	for (int t = 0; t < l; t++) {
+		for (int i = 1; i <= n; i++) {
+			IloExpr cst(env);
+			for (int k = 0; k < K; k++) {
+				cst += z[i][k][t];
+			}
+			CC.add(cst <= 1);
+			cstname.str("");
+			cstname << "Cst_vehicule_" << i << "_line_" << t;
+			CC[nbcst].setName(cstname.str().c_str());
+			nbcst++;
+		}
+	}
+
+	// Contraintes de charge maximale d'un vehicule
+	for (int t = 0; t < l; t++) {
+		for (int k = 0; k < K; k++) {
+			IloExpr cst(env);
+			for (int i = 1; i <= n; i++) {
+				cst += q[i][k][t];
+			}
+			CC.add(cst <= instance->Q);
+			cstname.str("");
+			cstname << "Cst_charge_" << t << "_" << k;
+			CC[nbcst].setName(cstname.str().c_str());
+			nbcst++;
+		}
+	}
+
+	model.add(CC);
+
+	//////////////
+	////// OBJ
+	//////////////
+
+	IloObjective obj = IloAdd(model, IloMinimize(env, 0.0));
+
+	for (int t = 0; t < l; t++) {
+
+		obj.setLinearCoef(p[t], instance->u);
+		obj.setLinearCoef(y[t], instance->f);
+		obj.setLinearCoef(I[0][t], instance->h[0]);
+
+		for (int i = 1; i <= n; i++) {
+			obj.setLinearCoef(I[i][t], instance->h[i]);
+
+			//avec le cout de visite pour l'heuristique de la partie 1 :
+			for (int k = 0; k < K; k++) {
+				obj.setLinearCoef(z[i][k][t], SC[i][t]);
+			}
+		}
+	}
+
+	///////////
+	//// RESOLUTION
+	//////////
+
+	IloCplex cplex(model);
+	if (!verbose) {
+		cplex.setOut(env.getNullStream());
+	}
+	cplex.solve();
+
+	for (int t = 0; t < l; t++) {
+		courante.p[t] = cplex.getValue(p[t]);
+		courante.y[t] = cplex.getValue(y[t]);
+		courante.I[0][t] = cplex.getValue(I[0][t]);
+		for (int i = 1; i <= n; i++) {
+			courante.I[i][t] = cplex.getValue(I[i][t]);
+			courante.q[i][t] = 0;
+			courante.z[i][t] = false;
+			for (int k = 0; k < K; k++) {
+				courante.q[i][t] += cplex.getValue(q[i][k][t]);
+				courante.z[i][t] = courante.z[i][t] || (cplex.getValue(z[i][k][t]) > 0.5);
+			}
 		}
 	}
 
@@ -444,7 +789,17 @@ void SolApprocheeHeuristique::solve_VRP_heuristique(int t, int nb_steps_optim, b
 			cplex.setOut(env.getNullStream());
 		}
 		//cplex.setParam(IloCplex::Param::MIP::Limits::Solutions, 1); // Arrêt à la première solution
-		cplex.solve();
+		if (!cplex.solve()) {
+			if (verbose) {
+				cout << "Probleme infaisable ! On doit envoyer :" << endl;
+				for (int i : a_visiter) {
+					cout << "q_" << i << " = " << courante.q[i][t] << endl;
+				}
+				cout << "On a " << instance->m << " vehicules de capacite " << instance->Q << endl;
+			}
+			env.end();
+			throw -1; // Si pas de solution retournée, alors on leve une exception (traitée dans notre solve)
+		}
 
 		tournees.clear();
 		for (int j = 0; j < K; j++) {
@@ -705,8 +1060,18 @@ void SolApprocheeHeuristique::solve(int max_iter, int nb_steps_optim, bool verbo
 	init_SC();
 	for (int i = 0; i < max_iter; i++) {
 		solve_LSP(verbose);
+		try { // Peut lever une exception si infaisable (impossible de diviser en camions)
+			for (int t = 0; t < instance->l; t++) {
+				solve_VRP_heuristique(t, nb_steps_optim, verbose);
+			}
+		}
+		catch (int e) { // Résoudre une version renforcée du LSP pour permettre la division en camions
+			solve_LSP_bis(verbose);
+			for (int t = 0; t < instance->l; t++) {
+				solve_VRP_heuristique(t, nb_steps_optim, verbose);
+			}
+		}
 		for (int t = 0; t < instance->l; t++) {
-			solve_VRP_heuristique(t, nb_steps_optim, verbose);
 			calcul_SC(t, verbose);
 		}
 		courante.calcul_valeur(*instance);

@@ -18,6 +18,7 @@
 
 using namespace std;
 
+//default_random_engine alea(0);
 default_random_engine alea(time(0));
 
 void tester_A_14(int indice = 1, int indice2 = 1, int repeat = 10) {
@@ -865,8 +866,8 @@ int main(int argc, char** argv)
 
     //tester_coupe_vs_v2(10);
     //tester_instance_0(10);
-    /*tester_app_heuristique_all(10);
-    return 0;*/
+    tester_app_heuristique_all(10);
+    return 0;
 
     //instance de test (type A)
     //ifstream fic("PRP_instances/Instance_1.prp");
