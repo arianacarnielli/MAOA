@@ -140,7 +140,6 @@ ILOLAZYCONSTRAINTCALLBACK5(BriserCycle, int, n, int, l, int, K, vector<vector<ve
 					}
 					cst += z[e][k][t];
 					add(cst <= 0);
-					//add(cst <= (int)S.size() - 1).end();
 				}
 			}
 		}
@@ -571,16 +570,13 @@ void SolExacteV2::solve(Solution* sol_init, double tolerance, double time_limit,
 		for (int t = 0; t < l; t++) {
 			vars.add(p[t]);
 			vals.add(sol_init->p[t]);
-			//p[t].setBounds(sol_init->p[t], sol_init->p[t]);
 
 			vars.add(y[t]);
 			vals.add(sol_init->y[t]);
-			//y[t].setBounds(sol_init->y[t], sol_init->y[t]);
 
 			for (int i = 0; i <= n; i++) {
 				vars.add(I[i][t]);
 				vals.add(sol_init->I[i][t]);
-				//I[i][t].setBounds(sol_init->I[i][t], sol_init->I[i][t]);
 			}
 
 			// Parcours des tournées
@@ -641,7 +637,6 @@ void SolExacteV2::solve(Solution* sol_init, double tolerance, double time_limit,
 						if (i != j) {
 							vars.add(x[i][j][k][t]);
 							vals.add(x_tab[i][j]);
-							//x[i][j][t].setBounds(x_tab[i][j], x_tab[i][j]);
 						}
 					}
 				}
@@ -734,29 +729,4 @@ void SolExacteV2::solve(Solution* sol_init, double tolerance, double time_limit,
 	solution.calcul_valeur(*instance);
 
 	env.end();
-
-	// Affichages
-	/*if (verbose) {
-		for (int t = 0; t < l; t++) {
-			cout << "Pas de temps " << t << endl;
-
-			for (int k = 0; k < K; k++) {
-				cout << "  Camion " << k << endl;
-
-				for (int i = 0; i <= n; i++) {
-					for (int j = 0; j <= n; j++) {
-						if (i != j) {
-							cout << cplex.getValue(x[i][j][k][t]) << " ";
-						} else {
-							cout << "0 ";
-						}
-					}
-					cout << endl;
-				}
-			}
-		}
-
-		cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
-		cout << "valeur de la solution : " << solution.valeur << endl;
-	}*/
 }

@@ -10,7 +10,6 @@
 #include "PRP.h"
 #include "Solution.h"
 
-//typedef IloArray<IloNumVarArray> NumVarMatrix;
 extern default_random_engine alea;
 
 ILOSTLBEGIN
@@ -253,6 +252,7 @@ int CoupesI::coupeGloutonEliminationCycleFractionnaireGeneralise(int n, int l) {
 	return cpt_constraints;
 }
 
+// Coupe pour la version simplifiée du tabu search
 int CoupesI::coupeTabuSimpleEliminationCycleFractionnaireGeneralise(int n, int l, int max_cpt, int tabu) {
 	int cpt_constraints = 0;
 
@@ -345,6 +345,7 @@ int CoupesI::coupeTabuSimpleEliminationCycleFractionnaireGeneralise(int n, int l
 	return cpt_constraints;
 }
 
+// Coupe pour la version complète du tabu search
 int CoupesI::coupeTabuEliminationCycleFractionnaireGeneralise(int n, int l, double u_lim, double l_lim, double per, int tope, int tll) {
 	/*
 	n : nombre de clients
@@ -732,7 +733,8 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 
 	ostringstream cstname;
 
-	//même code que les contraintes du LSP pour les 6 premières contraintes, c'est dans un if pour pouvoir le rétrécir et ne pas se perdre dans le code
+	// même code que les contraintes du LSP pour les 6 premières contraintes, 
+	// c'est dans un if pour pouvoir le rétrécir et ne pas se perdre dans le code
 	if (true) {
 		//Contrainte 1 : I0,t-1 + pt = sum{i}(qi,t) + I0,t
 		// il faut traiter le cas t = 0 separement
@@ -845,7 +847,6 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 			}
 		}
 	}
-	//fin de la copie
 
 	//contraintes 8 à 16
 	if (true) {
@@ -887,9 +888,8 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 			}
 		}
 		
-		//l'usine n'est pas pris en compte dedans (remarque je suis ce qu'il y a dans le papier)
-		// il y a une erreur dans la contrainte du papier, on fait une version corrigée ici.
 		//contrainte 11
+		// il y a une erreur dans la contrainte du papier, on fait une version corrigée ici.
 		for (int i = 1; i <= n; i++) {
 			for (int j = 1; j <= n; j++) {
 				for (int t = 0; t < l; t++) {
@@ -907,7 +907,7 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 			}
 		}
 		
-		//contrainte 12 (allégée)
+		//contrainte 12
 		for (int i = 1; i <= n; i++) {
 			for (int t = 0; t < l; t++) {
 				IloExpr cst(env);
@@ -972,29 +972,22 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 		for (int t = 0; t < l; t++) {
 			vars.add(p[t]);
 			vals.add(sol_init->p[t]);
-			//p[t].setBounds(sol_init->p[t], sol_init->p[t]);
 
 			vars.add(y[t]);
 			vals.add(sol_init->y[t]);
-			//y[t].setBounds(sol_init->y[t], sol_init->y[t]);
 
 			vars.add(I[0][t]);
 			vals.add(sol_init->I[0][t]);
-			//I[0][t].setBounds(sol_init->I[0][t], sol_init->I[0][t]);
 
 			for (int i = 1; i <= n; i++) {
 				vars.add(I[i][t]);
 				vals.add(sol_init->I[i][t]);
-				//I[i][t].setBounds(sol_init->I[i][t], sol_init->I[i][t]);
 
 				vars.add(q[i][t]);
 				vals.add(sol_init->q[i][t]);
-				//q[i][t].setBounds(sol_init->q[i][t], sol_init->q[i][t]);
 
 				vars.add(z[i][t]);
 				vals.add(sol_init->z[i][t]);
-				//z[i][t].setBounds(sol_init->z[i][t], sol_init->z[i][t]);
-
 			}
 
 			vector<vector<bool>> x_tab;
@@ -1015,7 +1008,6 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 					if (i != j) {
 						vars.add(x[i][j][t]);
 						vals.add(x_tab[i][j]);
-						//x[i][j][t].setBounds(x_tab[i][j], x_tab[i][j]);
 					}
 				}
 			}
@@ -1053,42 +1045,4 @@ void SolExacteCoupe::solve(Solution* sol_init, double tolerance, double time_lim
 	solution.calcul_valeur(*instance);
 
 	env.end();
-
-	// Affichages
-	//if (verbose) {
-	//	for (int t = 0; t < l; t++) {
-	//		cout << "p_" << t << ": " << solution.p[t] << endl;
-	//		cout << "y_" << t << ": " << solution.y[t] << endl;
-	//		cout << "I_0_" << t << ": " << solution.I[0][t] << endl;
-	//		cout << "z_0_" << t << ": " << solution.z[0][t] << endl;
-	//		for (int i = 1; i <= n; i++) {
-	//			cout << "I_" << i << "_" << t << ": " << solution.I[i][t] << endl;
-	//			cout << "q_" << i << "_" << t << ": " << solution.q[i][t] << endl;
-	//			cout << "z_" << i << "_" << t << ": " << solution.z[i][t] << endl;
-	//			cout << "w_" << i << "_" << t << ": " << w_sol[i][t] << endl;
-	//		}
-
-	//		cout << "tournee a l'instant t : " << t << endl;
-	//		for (int i = 0; i <= n; i++) {
-	//			cout << "Successeurs de " << i << " : ";
-	//			for (int k = 0; k < solution.x[t][i].size(); k++) {
-	//				cout << solution.x[t][i][k] << " ";
-	//			}
-	//			cout << endl;
-	//		}
-	//		cout << endl;
-	//		
-	//		/*for (int i = 0; i <= n; i++) {
-	//			cout << "i = " << i << ": ";
-	//			for (int j = 0; j <= n; j++) {
-	//				if (i != j) {
-	//					cout << cplex.getValue(x[i][j][t]) << " ";
-	//				}
-	//			}
-	//			cout << endl;
-	//		}*/
-	//	}
-	//	cout << "valeur de la solution cplex : " << cplex.getObjValue() << endl;
-	//	cout << "valeur de la solution : " << solution.valeur << endl;
-	//}
 }

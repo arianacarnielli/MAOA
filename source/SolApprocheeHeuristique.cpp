@@ -305,20 +305,6 @@ void SolApprocheeHeuristique::solve_LSP(bool verbose) {
 	}
 
 	env.end();
-
-	//if (verbose) {
-	//	for (int t = 0; t < l; t++) {
-	//		cout << "p_" << t << ": " << courante.p[t] << endl;
-	//		cout << "y_" << t << ": " << courante.y[t] << endl;
-	//		cout << "I_0_" << t << ": " << courante.I[0][t] << endl;
-	//		for (int i = 1; i <= n; i++) {
-	//			cout << "I_" << i << "_" << t << ": " << courante.I[i][t] << endl;
-	//			cout << "q_" << i << "_" << t << ": " << courante.q[i][t] << endl;
-	//			cout << "z_" << i << "_" << t << ": " << courante.z[i][t] << endl;
-	//		}
-	//		cout << endl;
-	//	}
-	//}
 }
 
 void SolApprocheeHeuristique::solve_LSP_bis(bool verbose) {
@@ -637,20 +623,6 @@ void SolApprocheeHeuristique::solve_LSP_bis(bool verbose) {
 	}
 
 	env.end();
-
-	//if (verbose) {
-	//	for (int t = 0; t < l; t++) {
-	//		cout << "p_" << t << ": " << courante.p[t] << endl;
-	//		cout << "y_" << t << ": " << courante.y[t] << endl;
-	//		cout << "I_0_" << t << ": " << courante.I[0][t] << endl;
-	//		for (int i = 1; i <= n; i++) {
-	//			cout << "I_" << i << "_" << t << ": " << courante.I[i][t] << endl;
-	//			cout << "q_" << i << "_" << t << ": " << courante.q[i][t] << endl;
-	//			cout << "z_" << i << "_" << t << ": " << courante.z[i][t] << endl;
-	//		}
-	//		cout << endl;
-	//	}
-	//}
 }
 
 vector<int> tournee_vois_2TSP(vector<int> tournee, int u, int v) {
@@ -730,7 +702,6 @@ void SolApprocheeHeuristique::solve_VRP_heuristique(int t, int nb_steps_optim, b
 
 	// Si l'approche gloutonne ci-dessus ne donne pas une solution réalisable,
 	// (ce qui est rare) on essaie avec la résolution d'un PLNE
-	//if (true) {
 	if (tournees.size() > instance->m) {
 		a_visiter.clear();
 		for (int i = 1; i <= n; i++) {
@@ -879,23 +850,15 @@ void SolApprocheeHeuristique::solve_VRP_heuristique(int t, int nb_steps_optim, b
 			uniform_int_distribution<int> quelle_tournee(0, tournees.size() - 1);
 			int ind_tournee = quelle_tournee(alea);
 
-			//cout << "Tournee d'ou quelqu'un va sortir : " << ind_tournee << endl;
-
 			// Choix de l'élément qui sortira de la tournée
 			uniform_int_distribution<int> quel_element(0, tournees[ind_tournee].size() - 1);
 			int ind_element = quel_element(alea);
 			int elem = tournees[ind_tournee][ind_element];
 
-			//cout << "Indice de l'element a sortir : " << ind_element << endl;
-			//cout << "Element a sortir : " << elem << endl;
-
 			// Cout de le supprimer de sa tournée actuelle
 			int pred = (ind_element == 0) ? 0 : tournees[ind_tournee][ind_element - 1];
 			int succ = (ind_element == tournees[ind_tournee].size() - 1) ? 0 : tournees[ind_tournee][ind_element + 1];
 			double cout_suppression = instance->cost(pred, succ) - instance->cost(pred, elem) - instance->cost(elem, succ);
-			//cout << "Predecesseur : " << pred << endl;
-			//cout << "Successeur : " << succ << endl;
-			//cout << "Cout de suppression : " << cout_suppression << endl;
 
 			// Parcours des autres tournées pour savoir où l'insérer
 			int best_i = -1;
@@ -925,9 +888,6 @@ void SolApprocheeHeuristique::solve_VRP_heuristique(int t, int nb_steps_optim, b
 					}
 				}
 			}
-
-			//cout << "Meilleur endroit pour l'inserer : " << best_i << " " << best_j << endl;
-			//cout << "Cout d'insertion : " << best_cout_insertion << endl;
 
 			// On voit s'il y a l'intérêt de le mettre dans une nouvelle tournée, si possible
 			if ((tournees.size() < instance->m) && 
@@ -1034,26 +994,6 @@ void SolApprocheeHeuristique::calcul_SC(int t, bool verbose) {
 			}
 		}
 	}
-
-	// Affichage des résultats si verbose
-	/*if (verbose) {
-		for (int i = 1; i <= instance->n; i++) {
-			cout << "SC[" << i << "][" << t << "] = " << SC[i][t] << endl;
-		}
-
-		cout << "tableau des distances" << endl;
-
-		cout << "   | ";
-		for (int i = 0; i <= instance->n; i++) printf("%4d | ", i);
-		cout << endl;
-		for (int i = 0; i <= instance->n; i++) {
-			printf("%2d | ", i);
-			for (int j = 0; j <= instance->n; j++) {
-				printf("%4.0f | ", instance->cost(i, j));
-			}
-			cout << endl;
-		}
-	}*/
 }
 
 void SolApprocheeHeuristique::solve(int max_iter, int nb_steps_optim, bool verbose) {

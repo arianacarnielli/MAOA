@@ -59,7 +59,6 @@ void PRP::write_screen_txt(){
 
 }
 
-
 void PRP::write_instance_file(string inst){
   ostringstream name;
   int i,t;

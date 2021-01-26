@@ -1,160 +1,15 @@
 #include <vector>
 #include <ilcplex/ilocplex.h>
 #include <algorithm>
-#include <unordered_set>
-#include <cmath>
-#include <random>
-#include <limits>
 
-#include "SolApprocheeCoupe.h"
+#include "SolApprocheeBase.h"
 #include "PRP.h"
 
 typedef IloArray<IloNumVarArray> NumVarMatrix;
 
 ILOSTLBEGIN
 
-extern default_random_engine alea;
-
-class CoupesVRPI : public IloCplex::UserCutCallbackI {
-	int n;
-	PRP* instance;
-	vector<vector<IloNumVar>> x;
-	vector<double> d;
-	IloNum eps;
-	int repeat;
-public:
-	CoupesVRPI(IloEnv env, int n1, PRP* instance1, vector<vector<IloNumVar>> x1,
-		vector<double> d1, IloNum eps1, int repeat1) :
-		IloCplex::UserCutCallbackI(env),
-		n(n1),
-		instance(instance1),
-		x(x1),
-		d(d1),
-		eps(eps1),
-		repeat(repeat1) {}
-
-	IloCplex::CallbackI* duplicateCallback() const ILO_OVERRIDE {
-		return (new (getEnv()) CoupesVRPI(*this));
-	}
-
-	double valeurContrainteCoupes(unordered_set<int>& S, unordered_set<int>& Sbar);
-	int coupeGloutonContrainteCoupes();
-	void main() ILO_OVERRIDE;
-};
-
-IloCplex::Callback CoupesVRP(IloEnv env, int n1, PRP* instance1, vector<vector<IloNumVar>> x1,
-	vector<double> d1, IloNum eps1, int repeat1) {
-	return (IloCplex::Callback(new (env) CoupesVRPI(env, n1, instance1, x1, d1, eps1, repeat1)));
-}
-
-double CoupesVRPI::valeurContrainteCoupes(unordered_set<int>& S, unordered_set<int>& Sbar) {
-	double lhs = 0;
-	double rhs = 0;
-
-	for (int i : S) {
-		for (int j : Sbar) {
-			lhs += getValue(x[i][j]);
-		}
-		rhs += d[i];
-	}
-	rhs /= instance->Q;
-	return lhs - ceil(rhs);
-}
-
-int CoupesVRPI::coupeGloutonContrainteCoupes() {
-	int cpt_constraints = 0;
-
-	uniform_int_distribution<int> size(1, (n + 1) / 2);
-	uniform_int_distribution<int> element(1, n);
-	
-	unordered_set<int> best_S, best_Sbar;
-	double best_value = numeric_limits<double>::infinity();
-
-	for (int counter = 0; counter < repeat; counter++) {
-		// S est un ensemble aléatoire de taille aléatoire aussi
-		// S ne contient jamais l'usine
-		// Sbar = {0, 1, ..., n} \ S
-		unordered_set<int> S, Sbar;
-		int r_size = size(alea);
-		for (int i = 0; i < r_size; i++) {
-			S.insert(element(alea));
-		}
-		for (int i = 0; i <= n; i++) {
-			if (!S.count(i)) {
-				Sbar.insert(i);
-			}
-		}
-
-		// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
-		double value = valeurContrainteCoupes(S, Sbar);
-		if (value < best_value) {
-			best_value = value;
-			best_S = S;
-			best_Sbar = Sbar;
-		}
-
-		// Arrêt lorsque Sbar = {0}, S = {1, ..., n}
-		while (Sbar.size() > 1) {
-			// Choix du sommet v à ajouter à S
-			// Celui qui maximise Somme_{i in S} x[i][v]
-			// Heuristique de Augerat et al., EJOR, 1997
-			double xv_max = -1;
-			int v_max = 0;
-			for (int v : Sbar) {
-				if (v != 0) {
-					double xv_value = 0;
-					for (int i : S) {
-						xv_value += getValue(x[i][v]);
-					}
-					if (xv_value > xv_max) {
-						xv_max = xv_value;
-						v_max = v;
-					}
-				}
-			}
-
-			S.insert(v_max);
-			Sbar.erase(v_max);
-
-			// Calcul de la valeur de la contrainte sur l'ensemble S à l'instant t
-			value = valeurContrainteCoupes(S, Sbar);
-
-			// On garde la meilleure déjà trouvée
-			if (value < best_value) {
-				best_value = value;
-				best_S = S;
-				best_Sbar = Sbar;
-			}
-		}
-	}
-
-	// Si négatif : contrainte violée
-	// On ajoute la contrainte au PLNE
-	if (best_value < -eps) {
-		IloExpr cst(getEnv());
-		double rhs = 0;
-		for (int i : best_S) {
-			for (int j : best_Sbar) {
-				cst += x[i][j];
-			}
-			rhs += d[i];
-		}
-		rhs /= (instance->Q);
-		add(cst >= ceil(rhs)).end();
-		cpt_constraints++;
-	}
-	
-	return cpt_constraints;
-}
-
-void CoupesVRPI::main() {
-	coupeGloutonContrainteCoupes();
-}
-
-
-SolApprocheeCoupe::SolApprocheeCoupe(PRP* inst) :
-	meilleure(inst->n, inst->l), 
-	courante(inst->n, inst->l) {
+SolApprocheeBase::SolApprocheeBase(PRP* inst) : meilleure(inst->n, inst->l), courante(inst->n, inst->l) {
 	instance = inst;
 	int n = instance->n;
 	int l = instance->l;
@@ -165,7 +20,7 @@ SolApprocheeCoupe::SolApprocheeCoupe(PRP* inst) :
 	}
 }
 
-void SolApprocheeCoupe::init_SC() {
+void SolApprocheeBase::init_SC() {
 	for (int i = 1; i <= instance->n; i++) {
 		SC[i][0] = 2 * (instance->cost(0, i));
 		for (int t = 1; t < instance->l; t++) {
@@ -174,7 +29,7 @@ void SolApprocheeCoupe::init_SC() {
 	}
 }
 
-void SolApprocheeCoupe::solve_LSP(bool verbose) {
+void SolApprocheeBase::solve_LSP(bool verbose) {
 	int n = instance->n;
 	int l = instance->l;
 
@@ -442,23 +297,9 @@ void SolApprocheeCoupe::solve_LSP(bool verbose) {
 	}
 
 	env.end();
-
-	//if (verbose) {
-	//	for (int t = 0; t < l; t++) {
-	//		cout << "p_" << t << ": " << courante.p[t] << endl;
-	//		cout << "y_" << t << ": " << courante.y[t] << endl;
-	//		cout << "I_0_" << t << ": " << courante.I[0][t] << endl;
-	//		for (int i = 1; i <= n; i++) {
-	//			cout << "I_" << i << "_" << t << ": " << courante.I[i][t] << endl;
-	//			cout << "q_" << i << "_" << t << ": " << courante.q[i][t] << endl;
-	//			cout << "z_" << i << "_" << t << ": " << courante.z[i][t] << endl;
-	//		}
-	//		cout << endl;
-	//	}
-	//}
 }
 
-void SolApprocheeCoupe::solve_VRP_MTZ(int t, double time_limit, bool verbose) {
+void SolApprocheeBase::solve_VRP_MTZ(int t, bool verbose) {
 	// N contient les noeuds par lesquels on doit passer
 	vector<int> N;
 	N.push_back(0);
@@ -468,13 +309,6 @@ void SolApprocheeCoupe::solve_VRP_MTZ(int t, double time_limit, bool verbose) {
 		}
 	}
 	int n = N.size() - 1;
-
-	// Tableau de demandes
-	vector<double> d;
-	d.resize(n + 1);
-	for (int i = 1; i <= n; i++) {
-		d[i] = courante.q[N[i]][t];
-	}
 
 	//////////////
 	//////  CPLEX INITIALIZATION
@@ -555,7 +389,7 @@ void SolApprocheeCoupe::solve_VRP_MTZ(int t, double time_limit, bool verbose) {
 		nbcst++;
 	}
 
-	//contrainte 9, presque pareil
+	//contrainte 9
 	for (int j = 1; j <= n; j++) {
 		IloExpr c9(env);
 		for (int i = 0; i <= n; i++) {
@@ -575,7 +409,7 @@ void SolApprocheeCoupe::solve_VRP_MTZ(int t, double time_limit, bool verbose) {
 		for (int j = 1; j <= n; j++) {
 			if (i != j) {
 				IloExpr c10(env);
-				c10 += w[i] - w[j] - (instance->Q + d[i]) * x[i][j];
+				c10 += w[i] - w[j] - (instance->Q + courante.q[N[i]][t]) * x[i][j];
 				CC.add(c10 >= -instance->Q);
 				cstname.str("");
 				cstname << "Cst_11col_" << N[i] << "_line_" << N[j];
@@ -611,14 +445,6 @@ void SolApprocheeCoupe::solve_VRP_MTZ(int t, double time_limit, bool verbose) {
 		cplex.setOut(env.getNullStream());
 		cplex.setWarning(env.getNullStream());
 	}
-	// Coupe
-	cplex.use(CoupesVRP(env, n, instance, x, d, cplex.getParam(IloCplex::EpRHS), 1));
-
-	// Temps maximal de résolution
-	if (time_limit > 0) {
-		cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
-	}
-
 	cplex.solve();
 
 	for (int i = 0; i <= instance->n; i++) {
@@ -632,26 +458,10 @@ void SolApprocheeCoupe::solve_VRP_MTZ(int t, double time_limit, bool verbose) {
 		}
 	}
 
-	//if (verbose) {
-	//	if (n > 1) { // Quand n == 1, la variable w[1] n'apparaît sur aucune contrainte ni sur la fonction objectif, dont elle n'est pas calculée
-	//		for (int i = 1; i <= n; i++) {
-	//			cout << "w_" << N[i] << ": " << cplex.getValue(w[i]) << endl;
-	//		}
-	//	}
-
-	//	for (int i = 0; i <= n; i++) {
-	//		cout << "Successeurs de " << N[i] << ": ";
-	//		for (int k = 0; k < courante.x[t][N[i]].size(); k++) {
-	//			cout << courante.x[t][N[i]][k] << " ";
-	//		}
-	//		cout << endl;
-	//	}
-	//}
-
 	env.end();
 }
 
-void SolApprocheeCoupe::calcul_SC(int t, bool verbose) {
+void SolApprocheeBase::calcul_SC(int t, bool verbose) {
 	Graph g = courante.x[t]; // récupération du graphe
 	int n = g.size() - 1;
 	
@@ -704,34 +514,14 @@ void SolApprocheeCoupe::calcul_SC(int t, bool verbose) {
 			}
 		}
 	}
-
-	// Affichage des résultats si verbose
-	/*if (verbose) {
-		for (int i = 1; i <= instance->n; i++) {
-			cout << "SC[" << i << "][" << t << "] = " << SC[i][t] << endl;
-		}
-
-		cout << "tableau des distances" << endl;
-
-		cout << "   | ";
-		for (int i = 0; i <= instance->n; i++) printf("%4d | ", i);
-		cout << endl;
-		for (int i = 0; i <= instance->n; i++) {
-			printf("%2d | ", i);
-			for (int j = 0; j <= instance->n; j++) {
-				printf("%4.0f | ", instance->cost(i, j));
-			}
-			cout << endl;
-		}
-	}*/
 }
 
-void SolApprocheeCoupe::solve(int max_iter, double VSP_time_limit, bool verbose) {
+void SolApprocheeBase::solve(int max_iter, bool verbose) {
 	init_SC();
 	for (int i = 0; i < max_iter; i++) {
 		solve_LSP(verbose);
 		for (int t = 0; t < instance->l; t++) {
-			solve_VRP_MTZ(t, VSP_time_limit, verbose);
+			solve_VRP_MTZ(t, verbose);
 			calcul_SC(t, verbose);
 		}
 		courante.calcul_valeur(*instance);
